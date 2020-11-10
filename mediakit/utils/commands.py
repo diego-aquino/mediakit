@@ -19,3 +19,7 @@ def run_command_in_background(command):
     except Exception:
         exception = exceptions.UnspecifiedError()
         print(exception.message)
+
+
+def is_command_available(command):
+    return which(command) is not None
