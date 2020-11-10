@@ -1,0 +1,8 @@
+# Virtual environment
+venv/
+
+# Cache
+__pycache__/
+
+# Miscellaneous
+temp/
