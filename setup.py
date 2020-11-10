@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 from mediakit import info
 
 setup(
-    name=info.name,
+    name=info.name.lower(),
     version=info.version,
     description=info.description,
     author=info.author,
