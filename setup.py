@@ -1,11 +1,21 @@
+from os import path
+
 from setuptools import setup, find_packages
 
 from mediakit import info
+
+current_dirname = path.dirname(path.abspath(__file__))
+readme_path = path.join(current_dirname, 'README.md')
+
+with open(readme_path, encoding='utf-8') as readme:
+    long_description = readme.read()
 
 setup(
     name=info.name.lower(),
     version=info.version,
     description=info.description,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author=info.author,
     author_email=info.author_email,
     url=info.url,
