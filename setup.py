@@ -9,6 +9,7 @@ setup(
     author=info.author,
     author_email=info.author_email,
     url=info.url,
+    download_url=info.download_url,
     license=info.license,
     packages=find_packages(),
     include_package_data=True,
