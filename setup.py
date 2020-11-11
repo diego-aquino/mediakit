@@ -36,7 +36,8 @@ setup(
     python_requires='>=3.6',
     install_requires=[
         'pytube>=9.7.0',
-        'clint'
+        'clint',
+        'ffmpeg-python'
     ],
     entry_points={
         'console_scripts': [
