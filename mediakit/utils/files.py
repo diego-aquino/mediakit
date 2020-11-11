@@ -15,7 +15,7 @@ def remove_file(file_path):
 
 
 def get_safe_filename(filename):
-    partially_safe_filename = re.sub(r'[^0-9a-zA-Z-._?()/ ]', '', filename)
+    partially_safe_filename = re.sub(r'[{}\\"\']', '', filename)
     safe_filename = re.sub(r'[/]', ' ', partially_safe_filename)
 
     return safe_filename
