@@ -1,4 +1,5 @@
 from os import path
+import re
 
 from mediakit.utils.commands import run_command_in_background
 
@@ -11,6 +12,13 @@ def remove_file(file_path):
     remove_command = f'rm -rf {file_path}'
 
     run_command_in_background(remove_command)
+
+
+def get_safe_filename(filename):
+    partially_safe_filename = re.sub(r'[^0-9a-zA-Z-._?()/ ]', '', filename)
+    safe_filename = re.sub(r'[/]', ' ', partially_safe_filename)
+
+    return safe_filename
 
 
 def get_filename_from(file_path):
