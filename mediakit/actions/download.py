@@ -51,14 +51,14 @@ def download():
         exception = exceptions.InvalidVideoURLError()
         print(exception.message)
 
-    except KeyboardInterrupt:
+    except Exception:
+        exception = exceptions.UnspecifiedError()
+        print(exception.message)
+
+    finally:
         is_downloading = (
             hasattr(download_cli, 'downloading_media_resource')
             and download_cli.downloading_media_resource is not None
         )
         if is_downloading:
             download_cli.end_download_progress()
-
-    except Exception:
-        exception = exceptions.UnspecifiedError()
-        print(exception.message)
