@@ -2,7 +2,7 @@ from os import path
 
 from mediakit.info import temp_filename
 from mediakit.media.merge import merge_video_and_audio
-from mediakit.utils.files import remove_file
+from mediakit.utils.files import get_safe_filename, remove_file
 from . import statuscodes
 
 
@@ -19,7 +19,7 @@ class MediaResource:
         self.output_type = output_type
         self.output_path = output_path
 
-        self.filename = (
+        self.filename = get_safe_filename(
             filename if filename
             else f'{source.title}.mp4'
         )
