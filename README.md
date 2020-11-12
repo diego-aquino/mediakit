@@ -42,28 +42,29 @@ You can download a video with MediaKit by running:
 mediakit <video_url> [<output_path>]
 ```
 
-- **video_url**: the URL of the YouTube video to download (e.g. http://www.youtube.com/watch?v=...).
+- **video_url**: the URL of the video to download (e.g. http://www.youtube.com/watch?v=...).
+    > As URL's may have special characters, it is recommended that you **wrap the URL in double quotes** ("") to ensure that it will be recognized properly.
 - **output_path**: optional destination folder to where to save the downloads. If not provided, this will default to the current directory.
+    > You can also provide a custom name for the downloaded file. To do that, include it in the output path (e.g. path/to/folder/video.mp4).
 
 After running this command, an interactive CLI will guide you through the download process.
 
-> **Note:** You can also provide a name for the downloaded file. To do that, include it in the output path (e.g. path/to/folder/video.mp4).
 
 ### Examples of use:
 
 Download to the current directory
 ```bash
-mediakit https://www.youtube.com/watch?v=m7AFEULF9LI
+mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI"
 ```
 
 Download to **~/Videos**
 ```bash
-mediakit https://www.youtube.com/watch?v=m7AFEULF9LI ~/Videos
+mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" ~/Videos
 ```
 
 Download to **~/Videos** with name **song.mp4**
 ```bash
-mediakit https://www.youtube.com/watch?v=m7AFEULF9LI ~/Videos/song.mp4
+mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" ~/Videos/song.mp4
 ```
 
 ---
