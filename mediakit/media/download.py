@@ -3,7 +3,13 @@ from os import path
 from mediakit.info import temp_filename
 from mediakit.media.merge import merge_video_and_audio
 from mediakit.utils.files import get_safe_filename, remove_file
-from . import statuscodes
+
+
+class DownloadStatusCodes():
+    READY = 'READY'
+    DOWNLOADING = 'DOWNLOADING'
+    CONVERTING = 'CONVERTING'
+    DONE = 'DONE'
 
 
 class MediaResource:
@@ -50,10 +56,11 @@ class MediaResource:
             else f'[{self.audio.abr}]'
         )
 
-        self.download_status = statuscodes.ready
+        self.download_status = DownloadStatusCodes.READY
+        self.downloading_stream = None
 
     def download(self):
-        self.download_status = statuscodes.downloading
+        self.download_status = DownloadStatusCodes.DOWNLOADING
 
         if self.output_type.startswith('video'):
             self.downloading_stream = self.video
@@ -74,10 +81,10 @@ class MediaResource:
             )
 
         if self.output_type == 'video/audio' and self.has_external_audio:
-            self.download_status = statuscodes.converting
+            self.download_status = DownloadStatusCodes.CONVERTING
             self._merge_video_with_external_audio()
 
-        self.download_status = statuscodes.done
+        self.download_status = DownloadStatusCodes.DONE
 
     def get_total_bytes_remaining(self):
         if self.output_type == 'video/audio':
@@ -86,10 +93,10 @@ class MediaResource:
 
             return self.video_bytes_remaining
 
-        elif self.output_type == 'video-only':
+        if self.output_type == 'video-only':
             return self.video_bytes_remaining
 
-        elif self.output_type == 'audio-only':
+        if self.output_type == 'audio-only':
             return self.audio_bytes_remaining
 
     def _merge_video_with_external_audio(self):

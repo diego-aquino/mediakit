@@ -5,7 +5,7 @@ from math import floor
 
 from mediakit.info import name, version
 from mediakit.streams.screen import Screen
-from mediakit.media.download import MediaResource, statuscodes
+from mediakit.media.download import MediaResource
 from mediakit.utils.format import limit_text_length
 
 loading_characters = ['|', '/', '-', '\\']
