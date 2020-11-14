@@ -13,10 +13,21 @@ loading_characters = ['|', '/', '-', '\\']
 
 class DownloadCLI:
     def __init__(self):
+        self.screen = Screen()
         self.max_width = 80
 
+        self.video = None
+        self.output_path = None
+        self.filename = None
+        self.short_video_title = None
+
+        self.formats_to_download = []
+
+        self.downloading_media_resource = None
+        self.download_progress_ui = None
+        self.loading_character_index = 0
+
     def start(self, video_url):
-        self.screen = Screen()
         self.show_header(video_url)
 
     def show_header(self, video_url):
