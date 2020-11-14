@@ -10,6 +10,7 @@ class Content:
 class Screen:
     def __init__(self):
         self.contents = []
+        self.prompt_message = None
 
     def append_content(self, content_text):
         index_on_screen = len(self.contents)
@@ -67,8 +68,8 @@ class Screen:
 
             if valid_entry:
                 return entry
-            else:
-                self._erase_prompt_entry()
+
+            self._erase_prompt_entry()
 
     def _render_content(self, content):
         print(content.inner_text, end='')
