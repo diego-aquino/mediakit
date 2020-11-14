@@ -37,7 +37,8 @@ setup(
     install_requires=[
         'pytube>=9.7.2',
         'clint',
-        'ffmpeg-python'
+        'imageio',
+        'imageio-ffmpeg'
     ],
     entry_points={
         'console_scripts': [

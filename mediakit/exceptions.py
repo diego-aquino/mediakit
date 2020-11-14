@@ -4,19 +4,22 @@ class MediaKitError(Exception):
 
 class CommandUnavailable(MediaKitError):
     def __init__(self, command):
-        if command == 'ffmpeg':
-            self.message = (
-                'warning - FFmpeg is a required package for MediaKit, '
-                "but it doesn't appear to be installed.\n"
-                'You can install FFmpeg at https://ffmpeg.org/download.html.'
-            )
-        else:
-            self.message = (
-                f"error - Command '{command}' is not available."
-            )
+        self.message = (
+            f"error - Command '{command}' is not available."
+        )
 
         super().__init__(self.message)
 
+
+class FFMPEGNotAvailable(MediaKitError):
+    def __init__(self):
+        self.message = (
+            'warning - FFmpeg is a required package for MediaKit, '
+            "but it doesn't appear to be installed.\n"
+            'You can install FFmpeg at https://ffmpeg.org/download.html.'
+        )
+
+        super().__init__(self.message)
 
 class InvalidVideoURLError(MediaKitError):
     def __init__(self):

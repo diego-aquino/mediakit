@@ -7,6 +7,7 @@ from mediakit.streams.arguments import parse_download_arguments
 from mediakit.streams.cli import DownloadCLI
 from mediakit.utils.commands import is_command_available
 from mediakit.utils.files import get_filename_from
+from mediakit.constants import FFMPEG_BINARY
 from mediakit import exceptions
 
 
@@ -26,13 +27,9 @@ def download():
     download_cli.start(video_url)
 
     try:
-        if not is_command_available('ffmpeg'):
-            raise exceptions.CommandUnavailable('ffmpeg')
-    except exceptions.CommandUnavailable as exception:
-        print(exception.message)
-        return
+        if not FFMPEG_BINARY:
+            raise exceptions.FFMPEGNotAvailable()
 
-    try:
         video = YouTube(video_url)
         download_cli.register_download_info(video, output_path, filename)
         download_cli.show_video_heading()
@@ -46,6 +43,9 @@ def download():
 
         download_cli.download_selected_formats()
         download_cli.show_success_message()
+
+    except exceptions.FFMPEGNotAvailable as exception:
+        print(exception.message)
 
     except PytubeRegexMatchError:
         exception = exceptions.InvalidVideoURLError()
