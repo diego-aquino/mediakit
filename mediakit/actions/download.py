@@ -56,9 +56,7 @@ def download():
         print(exception.message)
 
     finally:
-        is_downloading = (
-            hasattr(download_cli, 'downloading_media_resource')
-            and download_cli.downloading_media_resource is not None
-        )
+        is_downloading = download_cli.downloading_media_resource is not None
+
         if is_downloading:
             download_cli.end_download_progress()
