@@ -2,3 +2,4 @@ pytube>=9.7.2
 clint
 imageio
 imageio-ffmpeg
+colorama
