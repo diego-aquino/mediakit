@@ -1,3 +1,5 @@
+from math import ceil
+
 from clint.textui.cols import console_width
 
 
@@ -23,9 +25,11 @@ class Screen:
         return new_content
 
     def update_content(self, content, new_content_text):
+        self._clear_lines_starting_at(content)
+
         content.inner_text = new_content_text
 
-        self._rerender_contents_starting_at(content)
+        self._render_contents_starting_at(content)
 
     def clear_lines(self, number_of_lines_to_clear):
         clear_expression = (
@@ -75,20 +79,47 @@ class Screen:
         print(content.inner_text, end='')
 
     def _clear_lines_starting_at(self, content):
+        current_console_width = self.get_console_width()
+
         lines_to_clear = 0
         for i in range(content.index_on_screen, len(self.contents)):
             content = self.contents[i]
-            lines_occupied = content.inner_text.count('\n')
-            lines_to_clear += lines_occupied
+
+            lines_to_clear += self._count_lines_occupied_by(
+                content,
+                current_console_width
+            )
 
         self.clear_lines(lines_to_clear)
 
-    def _rerender_contents_starting_at(self, content):
-        self._clear_lines_starting_at(content)
-
+    def _render_contents_starting_at(self, content):
         for i in range(content.index_on_screen, len(self.contents)):
             self._render_content(self.contents[i])
 
     def _erase_prompt_entry(self):
         self.clear_lines(1) # clear new line created by pressing enter on input()
-        self._rerender_contents_starting_at(self.prompt_message)
+
+        self._clear_lines_starting_at(self.prompt_message)
+        self._render_contents_starting_at(self.prompt_message)
+
+    def _count_lines_occupied_by(self, content, current_console_width):
+        lines = content.inner_text.split('\n')
+
+        lines_occupied = 0
+        for i in range(len(lines)):
+            line = lines[i]
+
+            # prevent counting one extra line when content.inner_text
+            # ends with a '\n'
+            is_extra_line = (
+                i == len(lines) - 1
+                and len(line) == 0
+            )
+            if is_extra_line:
+                continue
+
+            lines_occupied += max(ceil(len(line) / current_console_width), 1)
+
+        return lines_occupied
+
+screen = Screen()
