@@ -2,11 +2,34 @@ from math import ceil
 
 from clint.textui.cols import console_width
 
+from mediakit.utils.format import len_ansi_safe
+from .colors import colored, Colors
+
+
+class ContentCategories:
+    NORMAL = 'NORMAL'
+    INFO = 'INFO'
+    WARNING = 'WARNING'
+    ERROR = 'ERROR'
+    USER_INPUT = 'USER_INPUT'
+
 
 class Content:
-    def __init__(self, index_on_screen, inner_text=''):
+    def __init__(self, index_on_screen, text, category):
         self.index_on_screen = index_on_screen
-        self.inner_text = inner_text
+
+        if category == ContentCategories.NORMAL:
+            category_label = ''
+        elif category == ContentCategories.INFO:
+            category_label = colored('info ', fore=Colors.fore.BLUE)
+        elif category == ContentCategories.WARNING:
+            category_label = colored('warning ', fore=Colors.fore.YELLOW)
+        elif category == ContentCategories.ERROR:
+            category_label = colored('error ', fore=Colors.fore.RED)
+        elif category == ContentCategories.USER_INPUT:
+            category_label = colored('? ', fore=Colors.fore.BLUE)
+
+        self.inner_text = f'{category_label}{text}'
 
 
 class Screen:
@@ -14,10 +37,10 @@ class Screen:
         self.contents = []
         self.prompt_message = None
 
-    def append_content(self, content_text):
+    def append_content(self, content_text, category=ContentCategories.NORMAL):
         index_on_screen = len(self.contents)
 
-        new_content = Content(index_on_screen, content_text)
+        new_content = Content(index_on_screen, content_text, category)
 
         self.contents.append(new_content)
         self._render_content(new_content)
@@ -57,7 +80,10 @@ class Screen:
         valid_inputs = set(valid_inputs)
         invalid_inputs = set(invalid_inputs)
 
-        self.prompt_message = self.append_content(message)
+        self.prompt_message = self.append_content(
+            message,
+            category=ContentCategories.USER_INPUT
+        )
 
         while True:
             entry = input()
@@ -113,12 +139,15 @@ class Screen:
             # ends with a '\n'
             is_extra_line = (
                 i == len(lines) - 1
-                and len(line) == 0
+                and len_ansi_safe(line) == 0
             )
             if is_extra_line:
                 continue
 
-            lines_occupied += max(ceil(len(line) / current_console_width), 1)
+            lines_occupied += max(
+                ceil(len_ansi_safe(line) / current_console_width),
+                1
+            )
 
         return lines_occupied
 
