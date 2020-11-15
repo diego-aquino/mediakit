@@ -4,7 +4,7 @@ from time import sleep
 from math import floor
 
 from mediakit.info import name, version
-from mediakit.streams.screen import Screen
+from mediakit.streams.screen import screen
 from mediakit.media.download import MediaResource
 from mediakit.utils.format import limit_text_length
 
@@ -13,7 +13,6 @@ loading_characters = ['|', '/', '-', '\\']
 
 class DownloadCLI:
     def __init__(self):
-        self.screen = Screen()
         self.max_width = 80
 
         self.video = None
@@ -31,18 +30,18 @@ class DownloadCLI:
         self.show_header(video_url)
 
     def show_header(self, video_url):
-        self.screen.append_content(f'\n[{name} v{version}]\n\n')
+        screen.append_content(f'\n[{name} v{version}]\n\n')
 
         preparing_text = limit_text_length(
             f'Preparing to download video at {video_url}',
-            min(self.screen.get_console_width(), self.max_width) - 3
+            min(screen.get_console_width(), self.max_width) - 3
         )
         preparing_text_end = (
             '' if preparing_text.endswith('...')
             else '...'
         )
 
-        self.screen.append_content(f'{preparing_text}{preparing_text_end}\n\n')
+        screen.append_content(f'{preparing_text}{preparing_text_end}\n\n')
 
     def register_download_info(self, video, output_path, filename):
         self.video = video
@@ -55,7 +54,7 @@ class DownloadCLI:
         formatted_video_length = self._format_video_length()
 
         remaining_number_of_characters = (
-            min(self.screen.get_console_width(), self.max_width)
+            min(screen.get_console_width(), self.max_width)
             - len(formatted_video_length)
             - 4
         )
@@ -65,7 +64,7 @@ class DownloadCLI:
         )
 
         spaces_between = ' ' * (
-            min(self.screen.get_console_width(), self.max_width)
+            min(screen.get_console_width(), self.max_width)
             - len(formatted_video_title)
             - len(formatted_video_length)
             - 3
@@ -77,7 +76,7 @@ class DownloadCLI:
             + f'({formatted_video_length})\n\n'
         )
 
-        self.screen.append_content(video_summary)
+        screen.append_content(video_summary)
 
     def show_download_summary(self):
         self.formats_to_download = [
@@ -99,13 +98,13 @@ class DownloadCLI:
         total_download_size = sum(media_resource_sizes)
         formatted_download_size = self._format_data_size(total_download_size)
 
-        self.screen.append_content(
+        screen.append_content(
             f'Ready to download {formatted_title} {formatted_download_formats}\n'
             f'Total download size: {formatted_download_size}\n\n'
         )
 
     def ask_for_confirmation_to_download(self):
-        answer = self.screen.prompt(
+        answer = screen.prompt(
             '? Confirm download? (Y/n) ',
             valid_inputs=['', 'y', 'n']
         )
@@ -154,7 +153,7 @@ class DownloadCLI:
         self.download_progress_ui = None
 
     def show_success_message(self):
-        self.screen.append_content(
+        screen.append_content(
             f'Success! Files saved at {self.output_path}/\n\n'
         )
 
@@ -162,12 +161,12 @@ class DownloadCLI:
         self.downloading_media_resource = media_resource
         self.loading_character_index = 0
 
-        self.download_progress_ui = self.screen.append_content(
+        self.download_progress_ui = screen.append_content(
             self._get_current_download_progress()
         )
 
     def _update_download_progress_ui(self):
-        self.screen.update_content(
+        screen.update_content(
             self.download_progress_ui,
             self._get_current_download_progress()
         )
@@ -191,7 +190,7 @@ class DownloadCLI:
 
         progress_percentage = bytes_downloaded / media_resource.total_size
 
-        available_width = min(self.screen.get_console_width(), self.max_width)
+        available_width = min(screen.get_console_width(), self.max_width)
 
         line_1 = {
             'left': (
