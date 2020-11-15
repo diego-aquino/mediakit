@@ -24,7 +24,7 @@ def download():
         output_path = path.dirname(output_path)
 
     download_cli = DownloadCLI()
-    download_cli.start(video_url)
+    download_cli.start()
 
     try:
         if not FFMPEG_BINARY:

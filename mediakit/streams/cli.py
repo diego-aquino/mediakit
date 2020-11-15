@@ -26,22 +26,8 @@ class DownloadCLI:
         self.download_progress_ui = None
         self.loading_character_index = 0
 
-    def start(self, video_url):
-        self.show_header(video_url)
-
-    def show_header(self, video_url):
-        screen.append_content(f'\n[{name} v{version}]\n\n')
-
-        preparing_text = limit_text_length(
-            f'Preparing to download video at {video_url}',
-            min(screen.get_console_width(), self.max_width) - 3
-        )
-        preparing_text_end = (
-            '' if preparing_text.endswith('...')
-            else '...'
-        )
-
-        screen.append_content(f'{preparing_text}{preparing_text_end}\n\n')
+    def start(self):
+        self._show_header()
 
     def register_download_info(self, video, output_path, filename):
         self.video = video
@@ -156,6 +142,10 @@ class DownloadCLI:
         screen.append_content(
             f'Success! Files saved at {self.output_path}/\n\n'
         )
+
+    def _show_header(self):
+        screen.append_content(f'{name.lower()} v{version}\n\n')
+        screen.append_content('Loading video...\n\n')
 
     def _create_download_progress(self, media_resource):
         self.downloading_media_resource = media_resource
