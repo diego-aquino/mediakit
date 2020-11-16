@@ -5,7 +5,6 @@ from pytube.exceptions import RegexMatchError as PytubeRegexMatchError
 
 from mediakit.streams.arguments import parse_download_arguments
 from mediakit.streams.cli import DownloadCLI
-from mediakit.utils.commands import is_command_available
 from mediakit.utils.files import get_filename_from
 from mediakit.constants import FFMPEG_BINARY
 from mediakit import exceptions

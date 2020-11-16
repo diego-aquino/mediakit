@@ -1,4 +1,3 @@
-from os import path
 from threading import Thread
 from time import sleep
 from math import floor
