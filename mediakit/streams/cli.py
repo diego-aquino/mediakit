@@ -26,6 +26,8 @@ class DownloadCLI:
         self.download_progress_ui = None
         self.rotating_character_index = 0
 
+        self.is_terminated = False
+
     def start(self):
         self._show_header()
 
@@ -184,6 +186,9 @@ class DownloadCLI:
             )
         )
 
+    def terminate(self):
+        self.is_terminated = True
+
     def _show_header(self):
         screen.append_content(colored(
             f'{name.lower()} v{version}\n\n',
@@ -210,7 +215,7 @@ class DownloadCLI:
         )
 
     def _keep_download_progress_ui_updated(self):
-        while self.downloading_media_resource:
+        while self.downloading_media_resource and not self.is_terminated:
             self._update_download_progress_ui()
             sleep(0.2)
 

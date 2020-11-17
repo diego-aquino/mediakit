@@ -55,7 +55,4 @@ def download():
         print(exception.message)
 
     finally:
-        is_downloading = download_cli.downloading_media_resource is not None
-
-        if is_downloading:
-            download_cli.end_download_progress()
+        download_cli.terminate()
