@@ -15,6 +15,8 @@ class DownloadCLI:
     def __init__(self):
         self.max_width = 80
 
+        self.loading_label = None
+
         self.video = None
         self.output_path = None
         self.filename = None
@@ -37,6 +39,8 @@ class DownloadCLI:
         self.filename = filename
 
         self.short_video_title = self._format_video_title(26)
+
+        self._remove_loading_label()
 
     def show_video_heading(self):
         formatted_video_length = self._format_video_length()
@@ -195,10 +199,34 @@ class DownloadCLI:
             style=Colors.style.BRIGHT
         ))
 
-        screen.append_content(
-            'Loading video...\n\n',
+        self.loading_label = screen.append_content(
+            'Loading video.\n\n',
             ContentCategories.INFO
         )
+
+        number_of_dots = 1
+
+        def run_loading_animation():
+            nonlocal number_of_dots
+
+            while self.video is None and not self.is_terminated:
+                number_of_dots = (number_of_dots + 1) % 4
+
+                if self.loading_label is None:
+                    break
+
+                screen.update_content(
+                    self.loading_label,
+                    'Loading video' + '.' * number_of_dots + '\n\n'
+                )
+
+                sleep(0.4)
+
+        Thread(target=run_loading_animation).start()
+
+    def _remove_loading_label(self):
+        if self.loading_label is not None:
+            screen.remove_content(self.loading_label)
 
     def _create_download_progress(self, media_resource):
         self.downloading_media_resource = media_resource
