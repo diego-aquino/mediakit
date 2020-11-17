@@ -318,9 +318,10 @@ class DownloadCLI:
         hours_section = remaining_minutes // 60
 
         formatted_video_length = (
-            f'{hours_section}:' if hours_section > 0 else ''
+            (f'{hours_section}:' if hours_section > 0 else '')
             + f'{minutes_section:0>2}:'
-            + f'{seconds_section:0>2}')
+            + f'{seconds_section:0>2}'
+        )
 
         return formatted_video_length
 
