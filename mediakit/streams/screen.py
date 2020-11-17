@@ -19,17 +19,20 @@ class Content:
         self.index_on_screen = index_on_screen
 
         if category == ContentCategories.NORMAL:
-            category_label = ''
+            self.category_label = ''
         elif category == ContentCategories.INFO:
-            category_label = colored('info ', fore=Colors.fore.BLUE)
+            self.category_label = colored('info ', fore=Colors.fore.BLUE)
         elif category == ContentCategories.WARNING:
-            category_label = colored('warning ', fore=Colors.fore.YELLOW)
+            self.category_label = colored('warning ', fore=Colors.fore.YELLOW)
         elif category == ContentCategories.ERROR:
-            category_label = colored('error ', fore=Colors.fore.RED)
+            self.category_label = colored('error ', fore=Colors.fore.RED)
         elif category == ContentCategories.USER_INPUT:
-            category_label = colored('? ', fore=Colors.fore.BLUE)
+            self.category_label = colored('? ', fore=Colors.fore.BLUE)
 
-        self.inner_text = f'{category_label}{text}'
+        self.inner_text = f'{self.category_label}{text}'
+
+    def update_inner_text(self, new_text):
+        self.inner_text = f'{self.category_label}{new_text}'
 
 
 class Screen:
@@ -50,7 +53,7 @@ class Screen:
     def update_content(self, content, new_content_text):
         self._clear_lines_starting_at(content)
 
-        content.inner_text = new_content_text
+        content.update_inner_text(new_content_text)
 
         self._render_contents_starting_at(content)
 
