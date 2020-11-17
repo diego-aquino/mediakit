@@ -57,6 +57,25 @@ class Screen:
 
         self._render_contents_starting_at(content)
 
+    def remove_content(self, content):
+        index_to_remove_at = content.index_on_screen
+
+        self._clear_lines_starting_at(content)
+        self.contents.pop(index_to_remove_at)
+
+        base_index = index_to_remove_at
+
+        for index in range(base_index, len(self.contents)):
+            self.contents[index].index_on_screen = index
+
+        needs_to_rerender_contents = (
+            len(self.contents) > 0
+            and base_index < len(self.contents)
+        )
+
+        if needs_to_rerender_contents:
+            self._render_contents_starting_at(self.contents[base_index])
+
     def clear_lines(self, number_of_lines_to_clear):
         clear_expression = (
             '\033[A'
