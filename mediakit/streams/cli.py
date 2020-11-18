@@ -8,7 +8,8 @@ from mediakit.streams.colors import colored, Colors
 from mediakit.media.download import MediaResource, DownloadStatusCodes
 from mediakit.utils.format import limit_text_length, len_ansi_safe
 
-rotating_characters = ['|', '/', '-', '\\']
+loading_dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+rotating_lines = ['|', '/', '-', '\\']
 
 
 class DownloadCLI:
@@ -26,7 +27,15 @@ class DownloadCLI:
 
         self.downloading_media_resource = None
         self.download_progress_ui = None
-        self.rotating_character_index = 0
+        self.rotating_line_frame = 0
+        self.loading_dots_frame = 0
+
+        self.ui_update_intervals = {
+            DownloadStatusCodes.DOWNLOADING: 0.2,
+            DownloadStatusCodes.CONVERTING: 0.1
+        }
+        self.default_ui_update_interval = 0.2
+        self.progress_ui_update_interval = self.default_ui_update_interval
 
         self.is_terminated = False
 
@@ -230,7 +239,6 @@ class DownloadCLI:
 
     def _create_download_progress(self, media_resource):
         self.downloading_media_resource = media_resource
-        self.rotating_character_index = 0
 
         self.download_progress_ui = screen.append_content(
             self._get_current_download_progress()
@@ -245,7 +253,19 @@ class DownloadCLI:
     def _keep_download_progress_ui_updated(self):
         while self.downloading_media_resource and not self.is_terminated:
             self._update_download_progress_ui()
-            sleep(0.2)
+            self._update_progress_ui_interval_if_necessary()
+
+            sleep(self.progress_ui_update_interval)
+
+    def _update_progress_ui_interval_if_necessary(self):
+        download_status = self.downloading_media_resource.download_status
+        required_interval = self.ui_update_intervals.get(
+            download_status,
+            self.default_ui_update_interval
+        )
+
+        if self.progress_ui_update_interval != required_interval:
+            self.progress_ui_update_interval = required_interval
 
     def _get_current_download_progress(self):
         download_status = self.downloading_media_resource.download_status
@@ -380,15 +400,19 @@ class DownloadCLI:
         status_character, status_color = '', ''
 
         if download_status == DownloadStatusCodes.DOWNLOADING:
-            status_character = '●'
+            self.rotating_line_frame = (
+                (self.rotating_line_frame + 1) % 4
+            )
+
+            status_character = rotating_lines[self.rotating_line_frame]
             status_color = Colors.fore.YELLOW
 
         if download_status == DownloadStatusCodes.CONVERTING:
-            self.rotating_character_index = (
-                (self.rotating_character_index + 1) % 4
+            self.loading_dots_frame = (
+                (self.loading_dots_frame + 1) % 10
             )
 
-            status_character = rotating_characters[self.rotating_character_index]
+            status_character = loading_dots[self.loading_dots_frame]
             status_color = Colors.fore.CYAN
 
         if download_status == DownloadStatusCodes.DONE:
