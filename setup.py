@@ -38,7 +38,8 @@ setup(
         'pytube>=9.7.2',
         'clint',
         'imageio',
-        'imageio-ffmpeg'
+        'imageio-ffmpeg',
+        'colorama'
     ],
     entry_points={
         'console_scripts': [

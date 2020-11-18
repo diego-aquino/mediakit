@@ -5,7 +5,6 @@ from pytube.exceptions import RegexMatchError as PytubeRegexMatchError
 
 from mediakit.streams.arguments import parse_download_arguments
 from mediakit.streams.cli import DownloadCLI
-from mediakit.utils.commands import is_command_available
 from mediakit.utils.files import get_filename_from
 from mediakit.constants import FFMPEG_BINARY
 from mediakit import exceptions
@@ -24,7 +23,7 @@ def download():
         output_path = path.dirname(output_path)
 
     download_cli = DownloadCLI()
-    download_cli.start(video_url)
+    download_cli.start()
 
     try:
         if not FFMPEG_BINARY:
@@ -45,18 +44,10 @@ def download():
         download_cli.show_success_message()
 
     except exceptions.FFMPEGNotAvailable as exception:
-        print(exception.message)
-
+        exceptions.show_exception_message(exception)
     except PytubeRegexMatchError:
-        exception = exceptions.InvalidVideoURLError()
-        print(exception.message)
-
+        exceptions.show_exception_message(exceptions.InvalidVideoURLError())
     except Exception:
-        exception = exceptions.UnspecifiedError()
-        print(exception.message)
-
+        exceptions.show_exception_message(exceptions.UnspecifiedError())
     finally:
-        is_downloading = download_cli.downloading_media_resource is not None
-
-        if is_downloading:
-            download_cli.end_download_progress()
+        download_cli.terminate()

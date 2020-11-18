@@ -1,20 +1,22 @@
-from os import path
 from threading import Thread
 from time import sleep
 from math import floor
 
 from mediakit.info import name, version
-from mediakit.streams.screen import Screen
-from mediakit.media.download import MediaResource
+from mediakit.streams.screen import screen, ContentCategories
+from mediakit.streams.colors import colored, Colors
+from mediakit.media.download import MediaResource, DownloadStatusCodes
 from mediakit.utils.format import limit_text_length
 
-loading_characters = ['|', '/', '-', '\\']
+loading_dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+rotating_lines = ['|', '/', '-', '\\']
 
 
 class DownloadCLI:
     def __init__(self):
-        self.screen = Screen()
         self.max_width = 80
+
+        self.loading_label = None
 
         self.video = None
         self.output_path = None
@@ -25,24 +27,20 @@ class DownloadCLI:
 
         self.downloading_media_resource = None
         self.download_progress_ui = None
-        self.loading_character_index = 0
+        self.rotating_line_frame = 0
+        self.loading_dots_frame = 0
 
-    def start(self, video_url):
-        self.show_header(video_url)
+        self.ui_update_intervals = {
+            DownloadStatusCodes.DOWNLOADING: 0.2,
+            DownloadStatusCodes.CONVERTING: 0.1
+        }
+        self.default_ui_update_interval = 0.2
+        self.progress_ui_update_interval = self.default_ui_update_interval
 
-    def show_header(self, video_url):
-        self.screen.append_content(f'\n[{name} v{version}]\n\n')
+        self.is_terminated = False
 
-        preparing_text = limit_text_length(
-            f'Preparing to download video at {video_url}',
-            min(self.screen.get_console_width(), self.max_width) - 3
-        )
-        preparing_text_end = (
-            '' if preparing_text.endswith('...')
-            else '...'
-        )
-
-        self.screen.append_content(f'{preparing_text}{preparing_text_end}\n\n')
+    def start(self):
+        self._show_header()
 
     def register_download_info(self, video, output_path, filename):
         self.video = video
@@ -51,11 +49,13 @@ class DownloadCLI:
 
         self.short_video_title = self._format_video_title(26)
 
+        self._remove_loading_label()
+
     def show_video_heading(self):
         formatted_video_length = self._format_video_length()
 
         remaining_number_of_characters = (
-            min(self.screen.get_console_width(), self.max_width)
+            min(screen.get_console_width(), self.max_width)
             - len(formatted_video_length)
             - 4
         )
@@ -65,19 +65,26 @@ class DownloadCLI:
         )
 
         spaces_between = ' ' * (
-            min(self.screen.get_console_width(), self.max_width)
+            min(screen.get_console_width(), self.max_width)
             - len(formatted_video_title)
             - len(formatted_video_length)
             - 3
         )
 
         video_summary = (
-            formatted_video_title
+            colored(
+                formatted_video_title,
+                fore=Colors.fore.CYAN,
+                style=Colors.style.BRIGHT
+            )
             + spaces_between
-            + f'({formatted_video_length})\n\n'
+            + colored(
+                f'({formatted_video_length})\n\n',
+                style=Colors.style.BRIGHT
+            )
         )
 
-        self.screen.append_content(video_summary)
+        screen.append_content(video_summary)
 
     def show_download_summary(self):
         self.formats_to_download = [
@@ -99,14 +106,40 @@ class DownloadCLI:
         total_download_size = sum(media_resource_sizes)
         formatted_download_size = self._format_data_size(total_download_size)
 
-        self.screen.append_content(
-            f'Ready to download {formatted_title} {formatted_download_formats}\n'
-            f'Total download size: {formatted_download_size}\n\n'
+        screen.append_content(
+            'Ready to download '
+            + colored(
+                f'{formatted_title} ',
+                fore=Colors.fore.CYAN,
+                style=Colors.style.BRIGHT
+            )
+            + colored(
+                f'{formatted_download_formats}\n',
+                fore=Colors.fore.BLUE,
+                style=Colors.style.BRIGHT
+            ),
+            ContentCategories.INFO
+        )
+        screen.append_content(
+            'Total download size: '
+            + colored(
+                f'{formatted_download_size}\n\n',
+                fore=Colors.fore.YELLOW
+            ),
+            ContentCategories.INFO
         )
 
     def ask_for_confirmation_to_download(self):
-        answer = self.screen.prompt(
-            '? Confirm download? (Y/n) ',
+        prompt_message = (
+            'Confirm download? '
+            + colored(
+                '(Y/n) ',
+                fore=Colors.fore.CYAN,
+            )
+        )
+
+        answer = screen.prompt(
+            prompt_message,
             valid_inputs=['', 'y', 'n']
         )
 
@@ -154,35 +187,138 @@ class DownloadCLI:
         self.download_progress_ui = None
 
     def show_success_message(self):
-        self.screen.append_content(
-            f'Success! Files saved at {self.output_path}/\n\n'
+        screen.append_content(
+            colored(
+                '\nSuccess! ',
+                fore=Colors.fore.GREEN
+            )
+            + 'Files saved at '
+            + colored(
+                f'{self.output_path}/\n\n',
+                fore=Colors.fore.CYAN,
+            )
         )
+
+    def terminate(self):
+        self.is_terminated = True
+
+    def _show_header(self):
+        screen.append_content(colored(
+            f'{name.lower()} v{version}\n\n',
+            style=Colors.style.BRIGHT
+        ))
+
+        self.loading_label = screen.append_content(
+            'Loading video.\n\n',
+            ContentCategories.INFO
+        )
+
+        number_of_dots = 1
+
+        def run_loading_animation():
+            nonlocal number_of_dots
+
+            while self.video is None and not self.is_terminated:
+                number_of_dots = (number_of_dots + 1) % 4
+
+                if self.loading_label is None:
+                    break
+
+                screen.update_content(
+                    self.loading_label,
+                    'Loading video' + '.' * number_of_dots + '\n\n'
+                )
+
+                sleep(0.4)
+
+        Thread(target=run_loading_animation).start()
+
+    def _remove_loading_label(self):
+        if self.loading_label is not None:
+            screen.remove_content(self.loading_label)
 
     def _create_download_progress(self, media_resource):
         self.downloading_media_resource = media_resource
-        self.loading_character_index = 0
 
-        self.download_progress_ui = self.screen.append_content(
+        self.download_progress_ui = screen.append_content(
             self._get_current_download_progress()
         )
 
     def _update_download_progress_ui(self):
-        self.screen.update_content(
+        screen.update_content(
             self.download_progress_ui,
             self._get_current_download_progress()
         )
 
     def _keep_download_progress_ui_updated(self):
-        while self.downloading_media_resource:
+        while self.downloading_media_resource and not self.is_terminated:
             self._update_download_progress_ui()
-            sleep(0.2)
+            self._update_progress_ui_interval_if_necessary()
+
+            sleep(self.progress_ui_update_interval)
+
+    def _update_progress_ui_interval_if_necessary(self):
+        download_status = self.downloading_media_resource.download_status
+        required_interval = self.ui_update_intervals.get(
+            download_status,
+            self.default_ui_update_interval
+        )
+
+        if self.progress_ui_update_interval != required_interval:
+            self.progress_ui_update_interval = required_interval
 
     def _get_current_download_progress(self):
-        media_resource = self.downloading_media_resource
-
-        loading_character = self._get_next_loading_character()
         download_status = self.downloading_media_resource.download_status
+
+        status_character, status_color = (
+            self._get_status_resources(download_status)
+        )
+
+        heading = self._get_download_progress_heading(
+            download_status,
+            status_character,
+            status_color
+        )
+
+        current_download_progress = heading + '\n'
+
+        if download_status == DownloadStatusCodes.DONE:
+            return current_download_progress
+
+        progress_bar = self._get_download_progress_bar(status_color)
+
+        current_download_progress += '\n' + progress_bar + '\n\n'
+
+        return current_download_progress
+
+    def _get_download_progress_heading(
+        self,
+        download_status,
+        status_character,
+        status_color
+    ):
         label = download_status.title()
+
+        heading = (
+            colored(
+                f'\n{status_character} {label} ',
+                fore=status_color
+            )
+            + colored(
+                f"{self.short_video_title} ",
+                style=Colors.style.BRIGHT
+            )
+            + colored(
+                f'{self.downloading_media_resource.formatted_definition}',
+                fore=Colors.fore.BLUE,
+                style=Colors.style.BRIGHT
+            )
+        )
+
+        return heading
+
+    def _get_download_progress_bar(self, status_color):
+        media_resource = self.downloading_media_resource
 
         bytes_downloaded = (
             media_resource.total_size
@@ -190,49 +326,50 @@ class DownloadCLI:
         )
 
         progress_percentage = bytes_downloaded / media_resource.total_size
+        available_width = min(screen.get_console_width(), self.max_width)
 
-        available_width = min(self.screen.get_console_width(), self.max_width)
+        formatted_bytes_downloaded = self._format_data_size(bytes_downloaded)
+        formatted_total_size = self._format_data_size(media_resource.total_size)
 
-        line_1 = {
-            'left': (
-                f'\n{loading_character} '
-                f"{label} '{self.short_video_title}' "
-                f'{media_resource.formatted_definition}'
-            ),
-            'right': f'({progress_percentage * 100:.1f}%)'
-        }
-
-        available_spaces_in_between = max(
-            available_width - len(line_1['left']) - len(line_1['right']),
-            5
-        )
-        line_1['middle'] = ' ' * available_spaces_in_between
-
-        line_2 = {
-            'right': (
-                f'[{self._format_data_size(bytes_downloaded)} / '
-                f'{self._format_data_size(media_resource.total_size)}]'
+        progress_bar_right = (
+            colored(
+                f' {progress_percentage * 100:.1f}% ',
+                fore=status_color,
+                style=Colors.style.BRIGHT
             )
-        }
+            + colored(
+                f'({formatted_bytes_downloaded} / '
+                + f'{formatted_total_size})',
+                style=Colors.style.DIM
+            )
+        )
+
+        max_progress_bar_right_width = len(
+            f' 100.0% ({formatted_total_size} / {formatted_total_size})'
+        )
+
         available_space_for_loading_bar = (
-            available_width - len(line_2['right']) - 3
+            available_width - max_progress_bar_right_width - 2
         )
         loaded_section_length = floor(
             available_space_for_loading_bar * progress_percentage
         )
-        line_2['left'] = (
-            '['
-            + "#" * loaded_section_length
-            + "-" * (available_space_for_loading_bar - loaded_section_length)
-            + ']'
+
+        progress_bar_left = (
+            '  '
+            + colored(
+                '█' * loaded_section_length,
+                fore=status_color
+            )
+            + colored(
+                '█' * (available_space_for_loading_bar - loaded_section_length),
+                style=Colors.style.DIM
+            )
         )
 
-        current_download_progress = (
-            line_1['left'] + line_1['middle'] + line_1['right'] + '\n'
-            + line_2['left'] + line_2['right'] + '\n\n'
-        )
+        progress_bar = progress_bar_left + progress_bar_right
 
-        return current_download_progress
+        return progress_bar
 
     def _format_video_length(self):
         seconds_section = self.video.length % 60
@@ -241,9 +378,10 @@ class DownloadCLI:
         hours_section = remaining_minutes // 60
 
         formatted_video_length = (
-            f'{hours_section}:' if hours_section > 0 else ''
+            (f'{hours_section}:' if hours_section > 0 else '')
             + f'{minutes_section:0>2}:'
-            + f'{seconds_section:0>2}')
+            + f'{seconds_section:0>2}'
+        )
 
         return formatted_video_length
 
@@ -265,7 +403,27 @@ class DownloadCLI:
 
         return formatted_download_formats
 
-    def _get_next_loading_character(self):
-        self.loading_character_index = (self.loading_character_index + 1) % 4
+    def _get_status_resources(self, download_status):
+        status_character, status_color = '', ''
 
-        return loading_characters[self.loading_character_index]
+        if download_status == DownloadStatusCodes.DOWNLOADING:
+            self.rotating_line_frame = (
+                (self.rotating_line_frame + 1) % 4
+            )
+
+            status_character = rotating_lines[self.rotating_line_frame]
+            status_color = Colors.fore.YELLOW
+
+        if download_status == DownloadStatusCodes.CONVERTING:
+            self.loading_dots_frame = (
+                (self.loading_dots_frame + 1) % 10
+            )
+
+            status_character = loading_dots[self.loading_dots_frame]
+            status_color = Colors.fore.CYAN
+
+        if download_status == DownloadStatusCodes.DONE:
+            status_character = '✔'
+            status_color = Colors.fore.GREEN
+
+        return status_character, status_color

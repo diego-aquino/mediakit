@@ -1,12 +1,19 @@
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mediakit.info import name, version, description
+from mediakit.streams.colors import colored, Colors
 
 
 def create_argument_parser():
     parser = ArgumentParser(
         formatter_class=RawDescriptionHelpFormatter,
-        description=f'[{name} v{version}]\n{description}'
+        description=(
+            colored(
+                f'{name.lower()} v{version}\n',
+                style=Colors.style.BRIGHT
+            )
+            + description
+        )
     )
 
     return parser
