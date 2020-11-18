@@ -44,15 +44,10 @@ def download():
         download_cli.show_success_message()
 
     except exceptions.FFMPEGNotAvailable as exception:
-        print(exception.message)
-
+        exceptions.show_exception_message(exception)
     except PytubeRegexMatchError:
-        exception = exceptions.InvalidVideoURLError()
-        print(exception.message)
-
+        exceptions.show_exception_message(exceptions.InvalidVideoURLError())
     except Exception:
-        exception = exceptions.UnspecifiedError()
-        print(exception.message)
-
+        exceptions.show_exception_message(exceptions.UnspecifiedError())
     finally:
         download_cli.terminate()
