@@ -6,7 +6,7 @@ from mediakit.info import name, version
 from mediakit.streams.screen import screen, ContentCategories
 from mediakit.streams.colors import colored, Colors
 from mediakit.media.download import MediaResource, DownloadStatusCodes
-from mediakit.utils.format import limit_text_length, len_ansi_safe
+from mediakit.utils.format import limit_text_length
 
 loading_dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 rotating_lines = ['|', '/', '-', '\\']
@@ -328,6 +328,9 @@ class DownloadCLI:
         progress_percentage = bytes_downloaded / media_resource.total_size
         available_width = min(screen.get_console_width(), self.max_width)
 
+        formatted_bytes_downloaded = self._format_data_size(bytes_downloaded)
+        formatted_total_size = self._format_data_size(media_resource.total_size)
+
         progress_bar_right = (
             colored(
                 f' {progress_percentage * 100:.1f}% ',
@@ -335,14 +338,18 @@ class DownloadCLI:
                 style=Colors.style.BRIGHT
             )
             + colored(
-                f'({self._format_data_size(bytes_downloaded)} / '
-                + f'{self._format_data_size(media_resource.total_size)})',
+                f'({formatted_bytes_downloaded} / '
+                + f'{formatted_total_size})',
                 style=Colors.style.DIM
             )
         )
 
+        max_progress_bar_right_width = len(
+            f' 100.0% ({formatted_total_size} / {formatted_total_size})'
+        )
+
         available_space_for_loading_bar = (
-            available_width - len_ansi_safe(progress_bar_right) - 2
+            available_width - max_progress_bar_right_width - 2
         )
         loaded_section_length = floor(
             available_space_for_loading_bar * progress_percentage
