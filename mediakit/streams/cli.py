@@ -23,7 +23,9 @@ class DownloadCLI:
         self.filename = None
         self.short_video_title = None
 
-        self.formats_to_download = []
+        self.available_formats = []
+        self.media_resources_to_download = []
+        self.skipped_formats = []
 
         self.downloading_media_resource = None
         self.download_progress_ui = None
@@ -42,10 +44,15 @@ class DownloadCLI:
     def start(self):
         self._show_header()
 
-    def register_download_info(self, video, output_path, filename):
+    def register_download_info(self, video, output_path, filename, formats):
         self.video = video
         self.output_path = output_path
         self.filename = filename
+
+        self.available_formats = self._get_available_formats(video)
+        self.media_resources_to_download = (
+            self._get_media_resources_to_download(formats)
+        )
 
         self.short_video_title = self._format_video_title(26)
 
@@ -87,21 +94,15 @@ class DownloadCLI:
         screen.append_content(video_summary)
 
     def show_download_summary(self):
-        self.formats_to_download = [
-            MediaResource(
-                self.video,
-                'video/audio',
-                output_path=self.output_path,
-                filename=self.filename
-            )
-        ]
+        if len(self.skipped_formats) > 0:
+            self._show_skipped_formats_warning()
 
         formatted_title = limit_text_length(self.video.title, 26)
         formatted_download_formats = self._get_formatted_download_formats()
 
         media_resource_sizes = map(
             lambda media_resource: media_resource.total_size,
-            self.formats_to_download
+            self.media_resources_to_download
         )
         total_download_size = sum(media_resource_sizes)
         formatted_download_size = self._format_data_size(total_download_size)
@@ -146,7 +147,7 @@ class DownloadCLI:
         return answer != 'n'
 
     def download_selected_formats(self):
-        for media_resource in self.formats_to_download:
+        for media_resource in self.media_resources_to_download:
             self._create_download_progress(media_resource)
             screen_thread = Thread(
                 target=self._keep_download_progress_ui_updated
@@ -202,6 +203,16 @@ class DownloadCLI:
     def terminate(self):
         self.is_terminated = True
 
+    def _remove_loading_label(self):
+        if self.loading_label is not None:
+            screen.remove_content(self.loading_label)
+
+    def were_all_formats_skipped(self):
+        return (
+            len(self.media_resources_to_download) == 0
+            and len(self.skipped_formats) > 0
+        )
+
     def _show_header(self):
         screen.append_content(colored(
             f'{name.lower()} v{version}\n\n',
@@ -233,9 +244,48 @@ class DownloadCLI:
 
         Thread(target=run_loading_animation).start()
 
-    def _remove_loading_label(self):
-        if self.loading_label is not None:
-            screen.remove_content(self.loading_label)
+    def _get_media_resources_to_download(self, formats):
+        media_resources_to_download = []
+
+        if len(formats) > 0:
+            should_append_format_to_filename = len(formats) > 1
+
+            for selected_format in formats:
+                if not self._is_format_available(selected_format):
+                    self.skipped_formats.append(selected_format)
+                    continue
+
+                media_resource = MediaResource(
+                    self.video,
+                    'video/audio',
+                    output_path=self.output_path,
+                    definition=selected_format,
+                    filename=self.filename,
+                    filename_suffix=(
+                        f'[{selected_format}]'
+                        if should_append_format_to_filename
+                        else ''
+                    )
+                )
+
+                media_resources_to_download.append(media_resource)
+
+        else:
+            default_media_resource = MediaResource(
+                self.video,
+                'video/audio',
+                output_path=self.output_path,
+                filename=self.filename
+            )
+
+            media_resources_to_download.append(default_media_resource)
+
+        return media_resources_to_download
+
+    def _is_format_available(self, selected_format):
+        filtered_streams = self.video.streams.filter(resolution=selected_format)
+
+        return len(filtered_streams) > 0
 
     def _create_download_progress(self, media_resource):
         self.downloading_media_resource = media_resource
@@ -396,7 +446,7 @@ class DownloadCLI:
     def _get_formatted_download_formats(self):
         formatted_definitions = map(
             lambda media_resource: media_resource.formatted_definition,
-            self.formats_to_download
+            self.media_resources_to_download
         )
 
         formatted_download_formats = ' '.join(formatted_definitions)
@@ -427,3 +477,42 @@ class DownloadCLI:
             status_color = Colors.fore.GREEN
 
         return status_character, status_color
+
+    def _get_available_formats(self, video):
+        video_streams = video.streams.filter(mime_type='video/mp4')
+
+        available_formats = set()
+        for stream in video_streams:
+            if stream.resolution is not None:
+                available_formats.add(stream.resolution)
+
+        available_formats_sorted_by_definition = sorted(
+            list(available_formats),
+            key=lambda definition: int(definition[:-1])
+        )
+
+        return reversed(available_formats_sorted_by_definition)
+
+    def _show_skipped_formats_warning(self):
+        formatted_skipped_formats = ' '.join(map(
+            lambda skipped_format: f'[{skipped_format}]',
+            self.skipped_formats
+        ))
+
+        skipped_formats_message = (
+            ('Formats ' if len(self.skipped_formats) > 1 else 'Format ')
+            + colored(
+                formatted_skipped_formats,
+                fore=Colors.fore.MAGENTA,
+                style=Colors.style.BRIGHT
+            )
+            + (' were ' if len(self.skipped_formats) > 1 else ' was ')
+            + 'not found. Skipping '
+            + ('them' if len(self.skipped_formats) > 1 else 'it')
+            + '...\n\n'
+        )
+
+        screen.append_content(
+            skipped_formats_message,
+            ContentCategories.WARNING
+        )

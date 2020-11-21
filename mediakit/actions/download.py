@@ -22,6 +22,8 @@ def download():
     if filename:
         output_path = path.dirname(output_path)
 
+    formats = arguments.formats
+
     download_cli = DownloadCLI()
     download_cli.start()
 
@@ -30,7 +32,12 @@ def download():
             raise exceptions.FFMPEGNotAvailable()
 
         video = YouTube(video_url)
-        download_cli.register_download_info(video, output_path, filename)
+        download_cli.register_download_info(
+            video,
+            output_path,
+            filename,
+            formats
+        )
         download_cli.show_video_heading()
         download_cli.show_download_summary()
 
