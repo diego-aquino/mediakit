@@ -53,6 +53,8 @@ def download():
     except exceptions.FFMPEGNotAvailable as exception:
         download_cli.remove_loading_label()
         exception.show_message()
+    except exceptions.NoAvailableSpecifiedFormats as exception:
+        exception.show_message()
     except PytubeRegexMatchError:
         download_cli.remove_loading_label()
         exceptions.InvalidVideoURLError().show_message()

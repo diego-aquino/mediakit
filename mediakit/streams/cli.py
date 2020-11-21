@@ -7,6 +7,7 @@ from mediakit.streams.screen import screen, ContentCategories
 from mediakit.streams.colors import colored, Colors
 from mediakit.media.download import MediaResource, DownloadStatusCodes
 from mediakit.utils.format import limit_text_length
+from mediakit import exceptions
 
 loading_dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 rotating_lines = ['|', '/', '-', '\\']
@@ -56,7 +57,7 @@ class DownloadCLI:
 
         self.short_video_title = self._format_video_title(26)
 
-        self._remove_loading_label()
+        self.remove_loading_label()
 
     def show_video_heading(self):
         formatted_video_length = self._format_video_length()
@@ -94,6 +95,9 @@ class DownloadCLI:
         screen.append_content(video_summary)
 
     def show_download_summary(self):
+        if self.were_all_formats_skipped():
+            raise exceptions.NoAvailableSpecifiedFormats(self.available_formats)
+
         if len(self.skipped_formats) > 0:
             self._show_skipped_formats_warning()
 
@@ -203,7 +207,7 @@ class DownloadCLI:
     def terminate(self):
         self.is_terminated = True
 
-    def _remove_loading_label(self):
+    def remove_loading_label(self):
         if self.loading_label is not None:
             screen.remove_content(self.loading_label)
 

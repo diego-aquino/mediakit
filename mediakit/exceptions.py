@@ -1,4 +1,5 @@
 from mediakit.streams.screen import screen, ContentCategories
+from mediakit.streams.colors import colored, Colors
 
 
 class MediaKitException(Exception):
@@ -41,6 +42,25 @@ class InvalidVideoURLError(MediaKitException):
 class UnspecifiedError(MediaKitException):
     def __init__(self):
         self.message = 'Something went wrong. :(\nPlease, try again.\n'
+        self.category = ContentCategories.ERROR
+
+        super().__init__(self.message)
+
+
+class NoAvailableSpecifiedFormats(MediaKitException):
+    def __init__(self, available_formats):
+        self.message = (
+            'None of the specified formats were found.\n'
+            + 'Please, verify your entries and try again.\n\n'
+
+            + 'The formats available for this video are: '
+            + colored(
+                ' '.join(available_formats),
+                fore=Colors.fore.BLUE,
+                style=Colors.style.BRIGHT
+            )
+            + '\n\n'
+        )
         self.category = ContentCategories.ERROR
 
         super().__init__(self.message)
