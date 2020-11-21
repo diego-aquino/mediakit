@@ -2,7 +2,8 @@ from mediakit.streams.screen import screen, ContentCategories
 
 
 class MediaKitException(Exception):
-    pass
+    def show_message(self):
+        screen.append_content(self.message, self.category)
 
 
 class CommandUnavailable(MediaKitException):
@@ -43,7 +44,3 @@ class UnspecifiedError(MediaKitException):
         self.category = ContentCategories.ERROR
 
         super().__init__(self.message)
-
-
-def show_exception_message(exception):
-    screen.append_content(exception.message, exception.category)
