@@ -349,9 +349,20 @@ class DownloadCLI:
     ):
         label = download_status.title()
 
+        is_downloading_first_media_resource = (
+            self.downloading_media_resource
+            is self.media_resources_to_download[0]
+        )
+
+        should_include_starting_newline = (
+            is_downloading_first_media_resource
+            or (download_status != DownloadStatusCodes.DONE)
+        )
+
         heading = (
-            colored(
-                f'\n{status_character} {label} ',
+            ('\n' if should_include_starting_newline else '')
+            + colored(
+                f'{status_character} {label} ',
                 fore=status_color
             )
             + colored(
