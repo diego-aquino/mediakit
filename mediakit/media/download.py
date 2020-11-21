@@ -19,16 +19,22 @@ class MediaResource:
         output_type,
         output_path=None,
         definition='max',
-        filename=''
+        filename='',
+        filename_suffix=''
     ):
         self.source = source
         self.output_type = output_type
         self.output_path = output_path
 
-        self.filename = get_safe_filename(
-            filename if filename
-            else f'{source.title}.mp4'
-        )
+        if filename:
+            filename_without_extension, extension = filename.split('.')
+            self.filename = get_safe_filename(
+                f'{filename_without_extension}{filename_suffix}.{extension}'
+            )
+        else:
+            self.filename = get_safe_filename(
+                f'{source.title}{filename_suffix}.mp4'
+            )
 
         if output_type == 'video/audio':
             self.video = self._get_video_stream(definition)
