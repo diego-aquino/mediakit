@@ -49,7 +49,6 @@ mediakit <video_url> [<output_path>]
 
 After running this command, an interactive CLI will guide you through the download process.
 
-
 ### Examples of use:
 
 Download to the current directory
@@ -66,6 +65,32 @@ Download to **~/Videos** with name **song.mp4**
 ```bash
 mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" ~/Videos/song.mp4
 ```
+
+### Selecting specific download formats
+
+By default, MediaKit will download the video with the highest available resolution. However, you can select specific download formats with the flag `--formats` (or its shorthand `-f`), followed by one or more desired formats:
+
+```bash
+mediakit <video_url> [<output_path>] [-f | --formats]
+```
+
+> If a resolution is not available for the video, the download will fall back to the closest available resolution lower than the one specified.
+
+**Examples of use:**
+- Download video with resolution of **1080p**
+  ```bash
+  mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f 1080p
+  ```
+
+- Download video with resolutions of **1080p** and **720p**
+  ```bash
+  mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f 1080p 720p
+  ```
+
+- Download video with **highest resolution available** (same result as not using the flag `-f`)
+  ```bash
+  mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f max
+  ```
 
 ---
 
