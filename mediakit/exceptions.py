@@ -10,7 +10,7 @@ class MediaKitException(Exception):
 class CommandUnavailable(MediaKitException):
     def __init__(self, command):
         self.message = (
-            f"Command '{command}' is not available.\n"
+            f"Command '{command}' is not available.\n\n"
         )
         self.category = ContentCategories.ERROR
 
@@ -22,7 +22,7 @@ class FFMPEGNotAvailable(MediaKitException):
         self.message = (
             'FFmpeg is a required package for MediaKit, '
             "but it doesn't appear to be installed.\n"
-            'You can install FFmpeg at https://ffmpeg.org/download.html.\n'
+            'You can install FFmpeg at https://ffmpeg.org/download.html.\n\n'
         )
         self.category = ContentCategories.WARNING
 
@@ -32,7 +32,7 @@ class FFMPEGNotAvailable(MediaKitException):
 class InvalidVideoURLError(MediaKitException):
     def __init__(self):
         self.message = (
-            'Could not recognize the provided URL. Please, try again.\n'
+            'Could not recognize the provided URL. Please, try again.\n\n'
         )
         self.category = ContentCategories.ERROR
 
@@ -41,7 +41,7 @@ class InvalidVideoURLError(MediaKitException):
 
 class UnspecifiedError(MediaKitException):
     def __init__(self):
-        self.message = 'Something went wrong. :(\nPlease, try again.\n'
+        self.message = 'Something went wrong. :(\nPlease, try again.\n\n'
         self.category = ContentCategories.ERROR
 
         super().__init__(self.message)
