@@ -287,9 +287,19 @@ class DownloadCLI:
         return media_resources_to_download
 
     def _is_format_available(self, selected_format):
-        filtered_streams = self.video.streams.filter(resolution=selected_format)
+        if selected_format == 'max':
+            video_streams = self.video.streams.filter(mime_type='video/mp4')
 
-        return len(filtered_streams) > 0
+            return len(video_streams) > 0
+
+        video_streams_with_specified_resolution = (
+            self.video.streams.filter(
+                mime_type='video/mp4',
+                resolution=selected_format
+            )
+        )
+
+        return len(video_streams_with_specified_resolution) > 0
 
     def _create_download_progress(self, media_resource):
         self.downloading_media_resource = media_resource
