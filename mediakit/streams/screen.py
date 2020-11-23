@@ -6,6 +6,16 @@ from mediakit.utils.format import len_ansi_safe
 from .colors import colored, Colors
 
 
+class ANSIConsoleExpressions:
+    MOVE_CURSOR_ONE_LINE_UP = '\033[A'
+    MOVE_CURSOR_TO_BEGGINING_OF_LINE = '\033[0G'
+    CLEAR_CHARACTERS_TO_THE_RIGHT_OF_CURSOR = '\033[K'
+    CLEAR_LINE = (
+        MOVE_CURSOR_TO_BEGGINING_OF_LINE
+        + CLEAR_CHARACTERS_TO_THE_RIGHT_OF_CURSOR
+    )
+
+
 class ContentCategories:
     NORMAL = 'NORMAL'
     INFO = 'INFO'
@@ -86,12 +96,12 @@ class Screen:
 
     def clear_lines(self, number_of_lines_to_clear):
         clear_expression = (
-            '\033[A'
-            + ' ' * self.get_console_width()
-            + '\033[A\n'
+            ANSIConsoleExpressions.MOVE_CURSOR_ONE_LINE_UP.join(
+                [ANSIConsoleExpressions.CLEAR_LINE] * number_of_lines_to_clear
+            )
         )
 
-        print(clear_expression * number_of_lines_to_clear, end='')
+        print(clear_expression, end='')
 
     def get_console_width(self):
         return console_width({})
@@ -153,7 +163,8 @@ class Screen:
             self._render_content(self.contents[i])
 
     def _erase_prompt_entry(self):
-        self.clear_lines(1) # clear new line created by pressing enter on input()
+        lines_occupied_by_entry = 2 # <entry>\n<empty line> -> 2 lines to clear
+        self.clear_lines(lines_occupied_by_entry)
 
         self._clear_lines_starting_at(self.prompt_message)
         self._render_contents_starting_at(self.prompt_message)
@@ -164,15 +175,6 @@ class Screen:
         lines_occupied = 0
         for i in range(len(lines)):
             line = lines[i]
-
-            # prevent counting one extra line when content.inner_text
-            # ends with a '\n'
-            is_extra_line = (
-                i == len(lines) - 1
-                and len_ansi_safe(line) == 0
-            )
-            if is_extra_line:
-                continue
 
             lines_occupied += max(
                 ceil(len_ansi_safe(line) / current_console_width),
