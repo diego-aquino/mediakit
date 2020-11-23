@@ -19,19 +19,14 @@
 ## Features
 
 - Quickly download YouTube videos with a single command on your terminal
+- Select specific download formats if you want to
 
 ## Installation
 
-To install MediaKit, you'll need to have [Python 3](https://www.python.org/downloads/) (>= 3.6) and [pip](https://pip.pypa.io/en/stable/installing/) already installed on your computer. With those packages available, run:
+To install MediaKit, you'll need to have [Python 3.6+](https://www.python.org/downloads/) and [pip](https://pip.pypa.io/en/stable/installing/) installed on your computer. Then, run:
 
 ```bash
 pip install mediakit
-```
-
-or
-
-```bash
-pip3 install mediakit
 ```
 
 ## How to use
@@ -49,26 +44,25 @@ mediakit <video_url> [<output_path>]
 
 After running this command, an interactive CLI will guide you through the download process.
 
-### Examples of use:
+**Examples of use:**
+  - Download to the current directory
+    ```bash
+    mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI"
+    ```
 
-Download to the current directory
-```bash
-mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI"
-```
+  - Download to **~/Videos**
+    ```bash
+    mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" ~/Videos
+    ```
 
-Download to **~/Videos**
-```bash
-mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" ~/Videos
-```
-
-Download to **~/Videos** with name **song.mp4**
-```bash
-mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" ~/Videos/song.mp4
-```
+  - Download to **~/Videos** with name **song.mp4**
+    ```bash
+    mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" ~/Videos/song.mp4
+    ```
 
 ### Selecting specific download formats
 
-By default, MediaKit will download the video with the highest available resolution. However, you can select specific download formats with the flag `--formats` (or its shorthand `-f`), followed by one or more desired formats:
+By default, MediaKit will download the specified video with the highest available resolution. However, you can select specific download formats with the flag `--formats` (or its shorthand `-f`), followed by one or more desired formats:
 
 ```bash
 mediakit <video_url> [<output_path>] [-f | --formats]
