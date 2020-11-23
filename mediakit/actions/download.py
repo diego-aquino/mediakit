@@ -22,6 +22,8 @@ def download():
     if filename:
         output_path = path.dirname(output_path)
 
+    formats = arguments.formats
+
     download_cli = DownloadCLI()
     download_cli.start()
 
@@ -30,7 +32,12 @@ def download():
             raise exceptions.FFMPEGNotAvailable()
 
         video = YouTube(video_url)
-        download_cli.register_download_info(video, output_path, filename)
+        download_cli.register_download_info(
+            video,
+            output_path,
+            filename,
+            formats
+        )
         download_cli.show_video_heading()
         download_cli.show_download_summary()
 
@@ -44,10 +51,17 @@ def download():
         download_cli.show_success_message()
 
     except exceptions.FFMPEGNotAvailable as exception:
-        exceptions.show_exception_message(exception)
+        download_cli.remove_loading_label()
+        exception.show_message()
+    except exceptions.NoAvailableSpecifiedFormats as exception:
+        exception.show_message()
     except PytubeRegexMatchError:
-        exceptions.show_exception_message(exceptions.InvalidVideoURLError())
+        download_cli.remove_loading_label()
+        exceptions.InvalidVideoURLError().show_message()
+    except KeyboardInterrupt:
+        pass
     except Exception:
-        exceptions.show_exception_message(exceptions.UnspecifiedError())
+        download_cli.remove_loading_label()
+        exceptions.UnspecifiedError().show_message()
     finally:
         download_cli.terminate()

@@ -29,11 +29,19 @@ class Content:
         elif category == ContentCategories.USER_INPUT:
             self.category_label = colored('? ', fore=Colors.fore.BLUE)
 
-        self.inner_text = f'{self.category_label}{text}'
+        self.update_inner_text(text)
 
     def update_inner_text(self, new_text):
-        self.inner_text = f'{self.category_label}{new_text}'
+        new_text_stripped_of_leading_newlines = new_text.lstrip('\n')
+        number_of_leading_newlines = (
+            len(new_text) - len(new_text_stripped_of_leading_newlines)
+        )
 
+        self.inner_text = (
+            '\n' * number_of_leading_newlines
+            + self.category_label
+            + new_text_stripped_of_leading_newlines
+        )
 
 class Screen:
     def __init__(self):

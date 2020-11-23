@@ -32,6 +32,13 @@ def parse_download_arguments():
         default='./',
         help='Destination folder to where to save the downloads'
     )
+    parser.add_argument(
+        '-f',
+        '--formats',
+        nargs='*',
+        default=[],
+        help='Formats to download, separated by spaces (e.g. 1080p 720p 360p)'
+    )
 
     arguments = parser.parse_args()
 

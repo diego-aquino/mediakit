@@ -7,6 +7,8 @@ from mediakit.streams.screen import screen, ContentCategories
 from mediakit.streams.colors import colored, Colors
 from mediakit.media.download import MediaResource, DownloadStatusCodes
 from mediakit.utils.format import limit_text_length
+from mediakit.constants import YOUTUBE_VIDEO_RESOLUTIONS
+from mediakit import exceptions
 
 loading_dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 rotating_lines = ['|', '/', '-', '\\']
@@ -23,7 +25,10 @@ class DownloadCLI:
         self.filename = None
         self.short_video_title = None
 
-        self.formats_to_download = []
+        self.available_formats = []
+        self.media_resources_to_download = []
+        self.skipped_formats = []
+        self.formats_replaced_by_fallback = []
 
         self.downloading_media_resource = None
         self.download_progress_ui = None
@@ -42,14 +47,19 @@ class DownloadCLI:
     def start(self):
         self._show_header()
 
-    def register_download_info(self, video, output_path, filename):
+    def register_download_info(self, video, output_path, filename, formats):
         self.video = video
         self.output_path = output_path
         self.filename = filename
 
+        self.available_formats = self._get_available_formats(video)
+        self.media_resources_to_download = (
+            self._get_media_resources_to_download(formats)
+        )
+
         self.short_video_title = self._format_video_title(26)
 
-        self._remove_loading_label()
+        self.remove_loading_label()
 
     def show_video_heading(self):
         formatted_video_length = self._format_video_length()
@@ -87,27 +97,33 @@ class DownloadCLI:
         screen.append_content(video_summary)
 
     def show_download_summary(self):
-        self.formats_to_download = [
-            MediaResource(
-                self.video,
-                'video/audio',
-                output_path=self.output_path,
-                filename=self.filename
-            )
-        ]
+        if self.were_all_formats_skipped():
+            raise exceptions.NoAvailableSpecifiedFormats(self.available_formats)
+
+        if len(self.skipped_formats) > 0:
+            self._show_skipped_formats_warning()
+
+        if len(self.formats_replaced_by_fallback) > 0:
+            self._show_fallback_replacement_summary()
 
         formatted_title = limit_text_length(self.video.title, 26)
         formatted_download_formats = self._get_formatted_download_formats()
 
         media_resource_sizes = map(
             lambda media_resource: media_resource.total_size,
-            self.formats_to_download
+            self.media_resources_to_download
         )
         total_download_size = sum(media_resource_sizes)
         formatted_download_size = self._format_data_size(total_download_size)
 
+        is_preceded_by_format_warnings = (
+            len(self.skipped_formats) > 0
+            or len(self.formats_replaced_by_fallback) > 0
+        )
+
         screen.append_content(
-            'Ready to download '
+            ('\n' if is_preceded_by_format_warnings else '')
+            + 'Ready to download '
             + colored(
                 f'{formatted_title} ',
                 fore=Colors.fore.CYAN,
@@ -146,7 +162,7 @@ class DownloadCLI:
         return answer != 'n'
 
     def download_selected_formats(self):
-        for media_resource in self.formats_to_download:
+        for media_resource in self.media_resources_to_download:
             self._create_download_progress(media_resource)
             screen_thread = Thread(
                 target=self._keep_download_progress_ui_updated
@@ -202,6 +218,16 @@ class DownloadCLI:
     def terminate(self):
         self.is_terminated = True
 
+    def remove_loading_label(self):
+        if self.loading_label is not None:
+            screen.remove_content(self.loading_label)
+
+    def were_all_formats_skipped(self):
+        return (
+            len(self.media_resources_to_download) == 0
+            and len(self.skipped_formats) > 0
+        )
+
     def _show_header(self):
         screen.append_content(colored(
             f'{name.lower()} v{version}\n\n',
@@ -233,9 +259,84 @@ class DownloadCLI:
 
         Thread(target=run_loading_animation).start()
 
-    def _remove_loading_label(self):
-        if self.loading_label is not None:
-            screen.remove_content(self.loading_label)
+    def _get_media_resources_to_download(self, formats):
+        media_resources_to_download = []
+
+        if len(formats) > 0:
+            should_append_format_to_filename = len(formats) > 1
+
+            for selected_format in formats:
+                available_format = self._get_available_format(selected_format)
+
+                if available_format is None:
+                    self.skipped_formats.append(selected_format)
+                    continue
+
+                if available_format != selected_format:
+                    self.formats_replaced_by_fallback.append({
+                        'base': selected_format,
+                        'fallback': available_format
+                    })
+
+                media_resource = MediaResource(
+                    self.video,
+                    'video/audio',
+                    output_path=self.output_path,
+                    definition=available_format,
+                    filename=self.filename,
+                    filename_suffix=(
+                        f'[{available_format}]'
+                        if should_append_format_to_filename
+                        else ''
+                    )
+                )
+
+                media_resources_to_download.append(media_resource)
+
+        else:
+            default_media_resource = MediaResource(
+                self.video,
+                'video/audio',
+                output_path=self.output_path,
+                filename=self.filename
+            )
+
+            media_resources_to_download.append(default_media_resource)
+
+        return media_resources_to_download
+
+    def _get_available_format(self, base_format):
+        is_valid_format = (
+            base_format in YOUTUBE_VIDEO_RESOLUTIONS
+            or base_format == 'max'
+        )
+        if not is_valid_format:
+            return None
+
+        possible_format = base_format
+
+        while possible_format is not None:
+            if self._is_format_available(possible_format):
+                return possible_format
+
+            possible_format = YOUTUBE_VIDEO_RESOLUTIONS[possible_format]['next']
+
+        return None
+
+    def _is_format_available(self, selected_format):
+        if selected_format == 'max':
+            video_streams = self.video.streams.filter(mime_type='video/mp4')
+
+            return len(video_streams) > 0
+
+        video_streams_with_specified_resolution = (
+            self.video.streams.filter(
+                mime_type='video/mp4',
+                resolution=selected_format
+            )
+        )
+
+        return len(video_streams_with_specified_resolution) > 0
 
     def _create_download_progress(self, media_resource):
         self.downloading_media_resource = media_resource
@@ -299,9 +400,20 @@ class DownloadCLI:
     ):
         label = download_status.title()
 
+        is_downloading_first_media_resource = (
+            self.downloading_media_resource
+            is self.media_resources_to_download[0]
+        )
+
+        should_include_starting_newline = (
+            is_downloading_first_media_resource
+            or (download_status != DownloadStatusCodes.DONE)
+        )
+
         heading = (
-            colored(
-                f'\n{status_character} {label} ',
+            ('\n' if should_include_starting_newline else '')
+            + colored(
+                f'{status_character} {label} ',
                 fore=status_color
             )
             + colored(
@@ -396,7 +508,7 @@ class DownloadCLI:
     def _get_formatted_download_formats(self):
         formatted_definitions = map(
             lambda media_resource: media_resource.formatted_definition,
-            self.formats_to_download
+            self.media_resources_to_download
         )
 
         formatted_download_formats = ' '.join(formatted_definitions)
@@ -427,3 +539,64 @@ class DownloadCLI:
             status_color = Colors.fore.GREEN
 
         return status_character, status_color
+
+    def _get_available_formats(self, video):
+        video_streams = video.streams.filter(mime_type='video/mp4')
+
+        available_formats = set()
+        for stream in video_streams:
+            if stream.resolution is not None:
+                available_formats.add(stream.resolution)
+
+        available_formats_sorted_by_definition = sorted(
+            list(available_formats),
+            key=lambda definition: int(definition[:-1])
+        )
+
+        return reversed(available_formats_sorted_by_definition)
+
+    def _show_skipped_formats_warning(self):
+        formatted_skipped_formats = ' '.join(map(
+            lambda skipped_format: f'[{skipped_format}]',
+            self.skipped_formats
+        ))
+
+        skipped_formats_message = (
+            ('Formats ' if len(self.skipped_formats) > 1 else 'Format ')
+            + colored(
+                formatted_skipped_formats,
+                fore=Colors.fore.MAGENTA,
+                style=Colors.style.BRIGHT
+            )
+            + (' were ' if len(self.skipped_formats) > 1 else ' was ')
+            + 'not found. Skipping '
+            + ('them' if len(self.skipped_formats) > 1 else 'it')
+            + '...\n'
+        )
+
+        screen.append_content(
+            skipped_formats_message,
+            ContentCategories.WARNING
+        )
+
+    def _show_fallback_replacement_summary(self):
+        replacement_summaries = []
+        for replaced_format in self.formats_replaced_by_fallback:
+            replacement_summaries.append(
+                'Format '
+                + colored(
+                    f"[{replaced_format['base']}]",
+                    fore=Colors.fore.YELLOW,
+                    style=Colors.style.BRIGHT
+                )
+                + ' is not available for this video. Falling back to '
+                + colored(
+                    f"[{replaced_format['fallback']}]",
+                    fore=Colors.fore.BLUE,
+                    style=Colors.style.BRIGHT
+                )
+                + '\n'
+            )
+
+        for summary in replacement_summaries:
+            screen.append_content(summary, ContentCategories.WARNING)
