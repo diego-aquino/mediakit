@@ -19,7 +19,7 @@
 ## Features
 
 - Quickly download YouTube videos with a single command on your terminal
-- Select specific download formats if you want to
+- Select specific download formats if you want to (with resolutions as high as **4K** :sunglasses:)
 
 ## Installation
 
@@ -74,17 +74,22 @@ mediakit <video_url> [<output_path>] [-f | --formats]
 > If a resolution is not available for the video, the download will fall back to the closest available resolution lower than the one specified.
 
 **Examples of use:**
-- Download video with resolution of **1080p**
+- Download with resolution of **1080p**
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f 1080p
   ```
 
-- Download video with resolutions of **1080p** and **720p**
+- Download with resolution of **4K** (2160p)
+  ```bash
+  mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f 4K
+  ```
+
+- Download **multiple resolutions** at once (each resolution will be downloaded in a different file)
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f 1080p 720p
   ```
 
-- Download video with **highest resolution available** (same result as not using the flag `-f`)
+- Download with the **highest resolution available** (same result as not using the flag `-f`)
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f max
   ```
