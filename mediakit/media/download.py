@@ -3,6 +3,7 @@ from os import path
 from mediakit.info import temp_filename
 from mediakit.media.merge import merge_video_and_audio
 from mediakit.utils.files import get_safe_filename, remove_file
+from mediakit.constants import VIDEO_RESOLUTIONS_ALIASES
 
 
 class DownloadStatusCodes():
@@ -26,6 +27,12 @@ class MediaResource:
         self.output_type = output_type
         self.output_path = output_path
 
+        final_definition = (
+            VIDEO_RESOLUTIONS_ALIASES
+                .get(definition, definition)
+        )
+        is_alias_definition = definition != final_definition
+
         if filename:
             filename_without_extension, extension = filename.split('.')
             self.filename = get_safe_filename(
@@ -37,7 +44,7 @@ class MediaResource:
             )
 
         if output_type == 'video/audio':
-            self.video = self._get_video_stream(definition)
+            self.video = self._get_video_stream(final_definition)
             self.total_size = self.video.filesize
             self.video_bytes_remaining = self.video.filesize
 
@@ -48,19 +55,25 @@ class MediaResource:
                 self.has_external_audio = True
 
         elif output_type == 'video-only':
-            self.video = self._get_video_stream(definition)
+            self.video = self._get_video_stream(final_definition)
             self.total_size = self.video.filesize
             self.video_bytes_remaining = self.video.filesize
 
         elif output_type == 'audio-only':
-            self.audio = self._get_audio_stream(definition)
+            self.audio = self._get_audio_stream(final_definition)
             self.total_size = self.audio.filesize
             self.audio_bytes_remaining = self.audio.filesize
 
-        self.formatted_definition = (
-            f'[{self.video.resolution}]' if self.output_type.startswith('video')
-            else f'[{self.audio.abr}]'
-        )
+        if definition == 'max':
+            self.formatted_definition = (
+                f'[{self.video.resolution}]'
+                if self.output_type.startswith('video')
+                else f'[{self.audio.abr}]'
+            )
+        elif is_alias_definition:
+            self.formatted_definition = f'[{definition}]'
+        else:
+            self.formatted_definition = f'[{final_definition}]'
 
         self.download_status = DownloadStatusCodes.READY
         self.downloading_stream = None
@@ -73,7 +86,7 @@ class MediaResource:
 
             self.video.download(
                 output_path=self.output_path,
-                filename=temp_filename,
+                filename=f'{temp_filename}[video]',
                 skip_existing=False
             )
         if (self.output_type == 'audio-only'
@@ -82,7 +95,7 @@ class MediaResource:
 
             self.audio.download(
                 output_path=self.output_path,
-                filename=temp_filename,
+                filename=f'{temp_filename}[audio]',
                 skip_existing=False
             )
 
@@ -111,11 +124,11 @@ class MediaResource:
 
         video_path = path.join(
             self.output_path,
-            f'{temp_filename}.{downloaded_video_extension}'
+            f'{temp_filename}[video].{downloaded_video_extension}'
         )
         audio_path = path.join(
             self.output_path,
-            f'{temp_filename}.{downloaded_audio_extension}'
+            f'{temp_filename}[audio].{downloaded_audio_extension}'
         )
         output_file_path = path.join(
             self.output_path,
@@ -134,13 +147,13 @@ class MediaResource:
         if definition == 'max':
             video_stream = (
                 self.source.streams
-                    .filter(mime_type='video/mp4')
+                    .filter(type='video')
                     .order_by('resolution')[-1]
             )
         else:
             video_stream = (
                 self.source.streams
-                    .filter(mime_type='video/mp4', resolution=definition)[-1]
+                    .filter(type='video', resolution=definition)[-1]
             )
 
         return video_stream

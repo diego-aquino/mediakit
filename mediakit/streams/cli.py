@@ -7,7 +7,7 @@ from mediakit.streams.screen import screen, ContentCategories
 from mediakit.streams.colors import colored, Colors
 from mediakit.media.download import MediaResource, DownloadStatusCodes
 from mediakit.utils.format import limit_text_length
-from mediakit.constants import YOUTUBE_VIDEO_RESOLUTIONS
+from mediakit.constants import VIDEO_RESOLUTIONS, VIDEO_RESOLUTIONS_ALIASES
 from mediakit import exceptions
 
 loading_dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
@@ -260,40 +260,7 @@ class DownloadCLI:
         Thread(target=run_loading_animation).start()
 
     def _get_media_resources_to_download(self, formats):
-        media_resources_to_download = []
-
-        if len(formats) > 0:
-            should_append_format_to_filename = len(formats) > 1
-
-            for selected_format in formats:
-                available_format = self._get_available_format(selected_format)
-
-                if available_format is None:
-                    self.skipped_formats.append(selected_format)
-                    continue
-
-                if available_format != selected_format:
-                    self.formats_replaced_by_fallback.append({
-                        'base': selected_format,
-                        'fallback': available_format
-                    })
-
-                media_resource = MediaResource(
-                    self.video,
-                    'video/audio',
-                    output_path=self.output_path,
-                    definition=available_format,
-                    filename=self.filename,
-                    filename_suffix=(
-                        f'[{available_format}]'
-                        if should_append_format_to_filename
-                        else ''
-                    )
-                )
-
-                media_resources_to_download.append(media_resource)
-
-        else:
+        if len(formats) == 0:
             default_media_resource = MediaResource(
                 self.video,
                 'video/audio',
@@ -301,13 +268,50 @@ class DownloadCLI:
                 filename=self.filename
             )
 
-            media_resources_to_download.append(default_media_resource)
+            return [default_media_resource]
+
+        media_resources_to_download = []
+
+        should_append_format_to_filename = len(formats) > 1
+        lowecased_formats = map(
+            lambda selected_format: selected_format.lower(),
+            formats
+        )
+
+        for selected_format in lowecased_formats:
+            available_format = self._get_available_format(selected_format)
+
+            if available_format is None:
+                self.skipped_formats.append(selected_format)
+                continue
+
+            if available_format != selected_format:
+                self.formats_replaced_by_fallback.append({
+                    'base': selected_format,
+                    'fallback': available_format
+                })
+
+            media_resource = MediaResource(
+                self.video,
+                'video/audio',
+                output_path=self.output_path,
+                definition=available_format,
+                filename=self.filename,
+                filename_suffix=(
+                    f'[{available_format}]'
+                    if should_append_format_to_filename
+                    else ''
+                )
+            )
+
+            media_resources_to_download.append(media_resource)
 
         return media_resources_to_download
 
     def _get_available_format(self, base_format):
         is_valid_format = (
-            base_format in YOUTUBE_VIDEO_RESOLUTIONS
+            base_format in VIDEO_RESOLUTIONS
+            or base_format in VIDEO_RESOLUTIONS_ALIASES
             or base_format == 'max'
         )
         if not is_valid_format:
@@ -319,20 +323,25 @@ class DownloadCLI:
             if self._is_format_available(possible_format):
                 return possible_format
 
-            possible_format = YOUTUBE_VIDEO_RESOLUTIONS[possible_format]['next']
+            possible_format = VIDEO_RESOLUTIONS[possible_format]['next']
 
         return None
 
     def _is_format_available(self, selected_format):
-        if selected_format == 'max':
-            video_streams = self.video.streams.filter(mime_type='video/mp4')
+        final_format = (
+            VIDEO_RESOLUTIONS_ALIASES
+                .get(selected_format, selected_format)
+        )
+
+        if final_format == 'max':
+            video_streams = self.video.streams.filter(type='video')
 
             return len(video_streams) > 0
 
         video_streams_with_specified_resolution = (
             self.video.streams.filter(
-                mime_type='video/mp4',
-                resolution=selected_format
+                type='video',
+                resolution=final_format
             )
         )
 
@@ -541,7 +550,7 @@ class DownloadCLI:
         return status_character, status_color
 
     def _get_available_formats(self, video):
-        video_streams = video.streams.filter(mime_type='video/mp4')
+        video_streams = video.streams.filter(type='video')
 
         available_formats = set()
         for stream in video_streams:
