@@ -7,7 +7,13 @@ from mediakit.streams.screen import screen, ContentCategories
 from mediakit.streams.colors import colored, Colors
 from mediakit.media.download import MediaResource, DownloadStatusCodes
 from mediakit.utils.format import limit_text_length
-from mediakit.constants import VIDEO_RESOLUTIONS, VIDEO_RESOLUTIONS_ALIASES
+from mediakit.constants import (
+    DOWNLOAD_FORMATS,
+    VIDEO_DEFINITIONS,
+    VIDEO_DEFINITIONS_ALIASES,
+    AUDIO_DEFINITIONS,
+    AVAILABLE_DEFINITIONS
+)
 from mediakit import exceptions
 
 loading_dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
@@ -52,7 +58,7 @@ class DownloadCLI:
         self.output_path = output_path
         self.filename = filename
 
-        self.available_formats = self._get_available_formats(video)
+        self.available_formats = self._get_available_definitions(video)
         self.media_resources_to_download = (
             self._get_media_resources_to_download(formats)
         )
@@ -176,7 +182,7 @@ class DownloadCLI:
     def update_download_progress_info(self, bytes_remaining):
         downloading_stream = self.downloading_media_resource.downloading_stream
 
-        if self.downloading_media_resource.output_type == 'video/audio':
+        if self.downloading_media_resource.output_type == 'videoaudio':
             if downloading_stream is self.downloading_media_resource.video:
                 self.downloading_media_resource.video_bytes_remaining = (
                     bytes_remaining
@@ -186,12 +192,12 @@ class DownloadCLI:
                     bytes_remaining
                 )
 
-        if self.downloading_media_resource.output_type == 'video-only':
+        if self.downloading_media_resource.output_type == 'videoonly':
             self.downloading_media_resource.video_bytes_remaining = (
                 bytes_remaining
             )
 
-        if self.downloading_media_resource.output_type == 'audio-only':
+        if self.downloading_media_resource.output_type == 'audio':
             self.downloading_media_resource.audio_bytes_remaining = (
                 bytes_remaining
             )
@@ -263,7 +269,7 @@ class DownloadCLI:
         if len(formats) == 0:
             default_media_resource = MediaResource(
                 self.video,
-                'video/audio',
+                'videoaudio',
                 output_path=self.output_path,
                 filename=self.filename
             )
@@ -272,80 +278,169 @@ class DownloadCLI:
 
         media_resources_to_download = []
 
-        should_append_format_to_filename = len(formats) > 1
-        lowecased_formats = map(
-            lambda selected_format: selected_format.lower(),
-            formats
-        )
+        lowecased_formats = [
+            selected_format.lower()
+            for selected_format in formats
+        ]
+        grouped_formats = self._group_and_validate_formats(lowecased_formats)
+        should_append_format_to_filename = len(grouped_formats) > 1
 
-        for selected_format in lowecased_formats:
-            available_format = self._get_available_format(selected_format)
+        for group in grouped_formats:
+            download_format = group['format']
+            definition = group['definition']
 
-            if available_format is None:
-                self.skipped_formats.append(selected_format)
+            available_definition = self._get_available_definition(
+                download_format,
+                definition
+            )
+
+            if available_definition is None:
+                self.skipped_formats.append(group)
                 continue
 
-            if available_format != selected_format:
+            if available_definition != definition:
                 self.formats_replaced_by_fallback.append({
-                    'base': selected_format,
-                    'fallback': available_format
+                    'base': {
+                        'format': download_format,
+                        'definition': definition
+                    },
+                    'fallback': {
+                        'format': download_format,
+                        'definition': available_definition
+                    },
                 })
+
+            if should_append_format_to_filename:
+                filename_suffix = (
+                    (
+                        f'[{download_format}] '
+                        if download_format != 'videoaudio'
+                        else ''
+                    )
+                    + f'[{available_definition}]'
+                )
+            else:
+                filename_suffix = ''
 
             media_resource = MediaResource(
                 self.video,
-                'video/audio',
+                download_format,
                 output_path=self.output_path,
-                definition=available_format,
+                definition=available_definition,
                 filename=self.filename,
-                filename_suffix=(
-                    f'[{available_format}]'
-                    if should_append_format_to_filename
-                    else ''
-                )
+                filename_suffix=filename_suffix
             )
 
             media_resources_to_download.append(media_resource)
 
         return media_resources_to_download
 
-    def _get_available_format(self, base_format):
-        is_valid_format = (
-            base_format in VIDEO_RESOLUTIONS
-            or base_format in VIDEO_RESOLUTIONS_ALIASES
-            or base_format == 'max'
-        )
-        if not is_valid_format:
+    def _group_and_validate_formats(self, formats):
+        grouped_formats = []
+
+        i = 0
+        while i < len(formats):
+            current_item = formats[i]
+            next_item = formats[i + 1] if i < len(formats) - 1 else None
+
+            is_current_item_a_format = current_item in DOWNLOAD_FORMATS
+            is_current_item_a_definition = current_item in AVAILABLE_DEFINITIONS
+            is_next_item_a_definition = next_item in AVAILABLE_DEFINITIONS
+
+            if is_current_item_a_format:
+                if is_next_item_a_definition:
+                    grouped_formats.append({
+                        'format': current_item,
+                        'definition': next_item
+                    })
+                    i += 1
+                else:
+                    grouped_formats.append({
+                        'format': current_item,
+                        'definition': 'max'
+                    })
+
+            elif is_current_item_a_definition:
+                grouped_formats.append({
+                    'format': 'videoaudio',
+                    'definition': current_item
+                })
+
+            else:
+                if is_next_item_a_definition:
+                    self.skipped_formats.append([current_item, next_item])
+                    i += 1
+                else:
+                    self.skipped_formats.append([current_item])
+
+            i += 1
+
+        return grouped_formats
+
+    def _get_available_definition(self, base_format, base_definition):
+        if base_format.startswith('video'):
+            is_valid_definition = (
+                base_definition in VIDEO_DEFINITIONS
+                or base_definition in VIDEO_DEFINITIONS_ALIASES
+            )
+        else:
+            is_valid_definition = base_definition in AUDIO_DEFINITIONS
+
+        if not is_valid_definition:
             return None
 
-        possible_format = base_format
+        possible_definition = base_definition
+        while possible_definition is not None:
+            if self._is_definition_available(base_format, possible_definition):
+                return possible_definition
 
-        while possible_format is not None:
-            if self._is_format_available(possible_format):
-                return possible_format
+            possible_definition = (
+                VIDEO_DEFINITIONS_ALIASES
+                    .get(possible_definition, possible_definition)
+            )
 
-            possible_format = VIDEO_RESOLUTIONS[possible_format]['next']
+            possible_definition = (
+                VIDEO_DEFINITIONS[possible_definition]['next']
+                if base_format.startswith('video')
+                else AUDIO_DEFINITIONS[possible_definition]['next']
+            )
 
         return None
 
-    def _is_format_available(self, selected_format):
-        final_format = (
-            VIDEO_RESOLUTIONS_ALIASES
-                .get(selected_format, selected_format)
-        )
-
-        if final_format == 'max':
-            video_streams = self.video.streams.filter(type='video')
-
-            return len(video_streams) > 0
-
-        video_streams_with_specified_resolution = (
-            self.video.streams.filter(
-                type='video',
-                resolution=final_format
+    def _is_definition_available(self, base_format, definition):
+        if base_format.startswith('video'):
+            final_definition = (
+                VIDEO_DEFINITIONS_ALIASES.get(definition, definition)
             )
-        )
 
-        return len(video_streams_with_specified_resolution) > 0
+            if final_definition == 'max':
+                video_streams = self.video.streams.filter(type='video')
+
+                return len(video_streams) > 0
+
+            video_streams_with_specified_resolution = (
+                self.video.streams.filter(
+                    type='video',
+                    resolution=final_definition
+                )
+            )
+
+            return len(video_streams_with_specified_resolution) > 0
+
+        else:
+            if definition == 'max':
+                audio_streams = self.video.streams.filter(type='audio')
+
+                return len(audio_streams) > 0
+
+            audio_streams_with_specified_resolution = (
+                self.video.streams.filter(
+                    type='audio',
+                    abr=definition
+                )
+            )
+
+            return len(audio_streams_with_specified_resolution) > 0
 
     def _create_download_progress(self, media_resource):
         self.downloading_media_resource = media_resource
@@ -549,7 +644,7 @@ class DownloadCLI:
 
         return status_character, status_color
 
-    def _get_available_formats(self, video):
+    def _get_available_definitions(self, video):
         video_streams = video.streams.filter(type='video')
 
         available_formats = set()
