@@ -283,11 +283,20 @@ class DownloadCLI:
             for selected_format in formats
         ]
         grouped_formats = self._group_and_validate_formats(lowecased_formats)
-        should_append_format_to_filename = len(grouped_formats) > 1
+
+        definitions_count = {}
+        for group in grouped_formats:
+            download_format = group['format']
+            current_count = definitions_count.get(download_format, 0)
+            definitions_count[download_format] = current_count + 1
 
         for group in grouped_formats:
             download_format = group['format']
             definition = group['definition']
+
+            should_append_format_to_filename = (
+                definitions_count[download_format] > 1
+            )
 
             available_definition = self._get_available_definition(
                 download_format,
