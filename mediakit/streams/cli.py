@@ -358,6 +358,7 @@ class DownloadCLI:
 
             is_current_item_a_format = current_item in DOWNLOAD_FORMATS
             is_current_item_a_definition = current_item in AVAILABLE_DEFINITIONS
+            is_next_item_a_format = next_item in DOWNLOAD_FORMATS
             is_next_item_a_definition = next_item in AVAILABLE_DEFINITIONS
 
             if is_current_item_a_format:
@@ -367,11 +368,14 @@ class DownloadCLI:
                         'definition': next_item
                     })
                     i += 1
-                else:
+                elif next_item is None or is_next_item_a_format:
                     grouped_formats.append({
                         'format': current_item,
                         'definition': 'max'
                     })
+                else:
+                    self.skipped_formats.append([current_item, next_item])
+                    i += 1
 
             elif is_current_item_a_definition:
                 grouped_formats.append({
@@ -380,11 +384,7 @@ class DownloadCLI:
                 })
 
             else:
-                if is_next_item_a_definition:
-                    self.skipped_formats.append([current_item, next_item])
-                    i += 1
-                else:
-                    self.skipped_formats.append([current_item])
+                self.skipped_formats.append([current_item])
 
             i += 1
 
@@ -673,15 +673,15 @@ class DownloadCLI:
         return reversed(available_formats_sorted_by_definition)
 
     def _show_skipped_formats_warning(self):
-        formatted_skipped_formats = ' '.join(map(
-            lambda skipped_format: f'[{skipped_format}]',
-            self.skipped_formats
-        ))
+        formatted_skipped_formats = [
+            f'[{" ".join(skipped_format)}]'
+            for skipped_format in self.skipped_formats
+        ]
 
         skipped_formats_message = (
             ('Formats ' if len(self.skipped_formats) > 1 else 'Format ')
             + colored(
-                formatted_skipped_formats,
+                ' '.join(formatted_skipped_formats),
                 fore=Colors.fore.MAGENTA,
                 style=Colors.style.BRIGHT
             )
@@ -697,18 +697,43 @@ class DownloadCLI:
         )
 
     def _show_fallback_replacement_summary(self):
+        def get_formatted_replaced_format(current_format, definition):
+            return (
+                '['
+                + (
+                    f'{current_format} '
+                    if current_format != 'videoaudio'
+                    else ''
+                )
+                + f'{definition}]'
+            )
+
         replacement_summaries = []
         for replaced_format in self.formats_replaced_by_fallback:
+            base_format = replaced_format['base']['format']
+            base_definition = replaced_format['base']['definition']
+            fallback_format = replaced_format['fallback']['format']
+            fallback_definition = replaced_format['fallback']['definition']
+
+            formatted_base = get_formatted_replaced_format(
+                base_format,
+                base_definition
+            )
+            formatted_fallback = get_formatted_replaced_format(
+                fallback_format,
+                fallback_definition
+            )
+
             replacement_summaries.append(
                 'Format '
                 + colored(
-                    f"[{replaced_format['base']}]",
+                    formatted_base,
                     fore=Colors.fore.YELLOW,
                     style=Colors.style.BRIGHT
                 )
                 + ' is not available for this video. Falling back to '
                 + colored(
-                    f"[{replaced_format['fallback']}]",
+                    formatted_fallback,
                     fore=Colors.fore.BLUE,
                     style=Colors.style.BRIGHT
                 )

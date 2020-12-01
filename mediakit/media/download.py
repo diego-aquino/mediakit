@@ -66,16 +66,22 @@ class MediaResource:
             self.total_size = self.audio.filesize
             self.audio_bytes_remaining = self.audio.filesize
 
+        self.formatted_definition = (
+            f'[{output_type} '
+            if output_type != 'videoaudio'
+            else '['
+        )
+
         if definition == 'max':
-            self.formatted_definition = (
-                f'[{self.video.resolution}]'
+            self.formatted_definition += (
+                f'{self.video.resolution}]'
                 if self.output_type.startswith('video')
-                else f'[{self.audio.abr}]'
+                else f'{self.audio.abr}]'
             )
         elif is_alias_definition:
-            self.formatted_definition = f'[{definition}]'
+            self.formatted_definition += f'{definition}]'
         else:
-            self.formatted_definition = f'[{final_definition}]'
+            self.formatted_definition += f'{final_definition}]'
 
         self.download_status = DownloadStatusCodes.READY
         self.downloading_stream = None
