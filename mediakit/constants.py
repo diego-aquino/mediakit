@@ -17,3 +17,10 @@ VIDEO_DEFINITIONS = {
 VIDEO_DEFINITIONS_ALIASES = {
     '4k': '2160p'
 }
+
+AUDIO_DEFINITIONS = {
+    '160kbps': { 'next': '128kbps' },
+    '128kbps': { 'next': '70kbps' },
+    '70kbps': { 'next': '50kbps' },
+    '50kbps': { 'next': None }
+}
