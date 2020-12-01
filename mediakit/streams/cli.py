@@ -322,11 +322,15 @@ class DownloadCLI:
             if should_append_format_to_filename:
                 filename_suffix = (
                     (
-                        f'[{download_format}] '
+                        f' [{download_format}] '
                         if download_format != 'videoaudio'
                         else ''
                     )
-                    + f'[{available_definition}]'
+                    + (
+                        f' [{available_definition}]'
+                        if available_definition != 'max'
+                        else ''
+                    )
                 )
             else:
                 filename_suffix = ''
