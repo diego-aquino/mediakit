@@ -46,7 +46,8 @@ def parse_download_arguments():
     parser.add_argument(
         '-y',
         '--yes',
-        action='store_true'
+        action='store_true',
+        help='Answer "yes" to all questions beforehand'
     )
 
     arguments = parser.parse_args()
