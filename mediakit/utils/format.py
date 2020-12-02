@@ -18,3 +18,15 @@ def len_ansi_safe(string):
     )
 
     return len(string_striped_of_ansi_codes)
+
+def parse_int(string):
+    integer_section_as_list = []
+    for character in string:
+        if character.isnumeric():
+            integer_section_as_list.append(character)
+        else:
+            break
+
+    integer_section = ''.join(integer_section_as_list)
+
+    return int(integer_section)

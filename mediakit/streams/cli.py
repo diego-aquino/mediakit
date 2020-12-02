@@ -6,7 +6,7 @@ from mediakit.info import name, version
 from mediakit.streams.screen import screen, ContentCategories
 from mediakit.streams.colors import colored, Colors
 from mediakit.media.download import MediaResource, DownloadStatusCodes
-from mediakit.utils.format import limit_text_length
+from mediakit.utils.format import limit_text_length, parse_int
 from mediakit.constants import (
     DOWNLOAD_FORMATS,
     VIDEO_DEFINITIONS,
@@ -31,7 +31,7 @@ class DownloadCLI:
         self.filename = None
         self.short_video_title = None
 
-        self.available_formats = []
+        self.available_formats = { 'video': [], 'audio': [] }
         self.media_resources_to_download = []
         self.skipped_formats = []
         self.formats_replaced_by_fallback = []
@@ -58,7 +58,7 @@ class DownloadCLI:
         self.output_path = output_path
         self.filename = filename
 
-        self.available_formats = self._get_available_definitions(video)
+        self.available_formats = self._get_available_formats()
         self.media_resources_to_download = (
             self._get_media_resources_to_download(formats)
         )
@@ -304,7 +304,7 @@ class DownloadCLI:
             )
 
             if available_definition is None:
-                self.skipped_formats.append(group)
+                self.skipped_formats.append([download_format, definition])
                 continue
 
             if available_definition != definition:
@@ -657,20 +657,31 @@ class DownloadCLI:
 
         return status_character, status_color
 
-    def _get_available_definitions(self, video):
-        video_streams = video.streams.filter(type='video')
+    def _get_available_formats(self):
+        video_streams = self.video.streams.filter(type='video')
+        audio_streams = self.video.streams.filter(type='audio')
 
-        available_formats = set()
+        available_formats = {
+            'video': set(),
+            'audio': set(),
+        }
         for stream in video_streams:
             if stream.resolution is not None:
-                available_formats.add(stream.resolution)
+                available_formats['video'].add(stream.resolution)
+        for stream in audio_streams:
+            available_formats['audio'].add(stream.abr)
 
-        available_formats_sorted_by_definition = sorted(
-            list(available_formats),
-            key=lambda definition: int(definition[:-1])
-        )
 
-        return reversed(available_formats_sorted_by_definition)
+        available_formats_sorted_by_definition = {
+            'video': reversed(
+                sorted(available_formats['video'], key=parse_int)
+            ),
+            'audio': reversed(
+                sorted(available_formats['audio'], key=parse_int)
+            )
+        }
+
+        return available_formats_sorted_by_definition
 
     def _show_skipped_formats_warning(self):
         formatted_skipped_formats = [
