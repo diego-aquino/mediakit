@@ -1,10 +1,10 @@
 name = 'MediaKit'
-version = '0.3.0'
+version = '0.4.0'
 description = 'Download YouTube videos fast, directly from the command line'
 author = 'Diego Aquino'
 author_email = 'diegocruzdeaquino@gmail.com'
 url = 'https://github.com/diego-aquino/mediakit'
-download_url = 'https://github.com/diego-aquino/mediakit/archive/v0.3.0.tar.gz'
+download_url = 'https://github.com/diego-aquino/mediakit/archive/v0.4.0.tar.gz'
 license = 'MIT'
 copyright = 'Copyright 2020 Diego Aquino'
 
