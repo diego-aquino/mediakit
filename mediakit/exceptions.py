@@ -53,9 +53,22 @@ class NoAvailableSpecifiedFormats(MediaKitException):
             'None of the specified formats were found.\n'
             + 'Please, verify your entries and try again.\n\n'
 
-            + 'The formats available for this video are: '
+            + 'The formats available for this video are:\n'
             + colored(
-                ' '.join(available_formats),
+                '   (video) ',
+                style=Colors.style.DIM + Colors.style.BRIGHT
+            )
+            + colored(
+                ' '.join(available_formats['video']),
+                fore=Colors.fore.BLUE,
+                style=Colors.style.BRIGHT
+            )
+            + colored(
+                '\n   (audio) ',
+                style=Colors.style.DIM + Colors.style.BRIGHT
+            )
+            + colored(
+                ' '.join(available_formats['audio']),
                 fore=Colors.fore.BLUE,
                 style=Colors.style.BRIGHT
             )

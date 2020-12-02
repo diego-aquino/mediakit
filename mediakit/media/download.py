@@ -1,9 +1,13 @@
 from os import path
 
 from mediakit.info import temp_filename
-from mediakit.media.merge import merge_video_and_audio
-from mediakit.utils.files import get_safe_filename, remove_file
-from mediakit.constants import VIDEO_RESOLUTIONS_ALIASES
+from mediakit.media.convert import (
+    merge_video_and_audio,
+    convert_media,
+    ConversionOptions
+)
+from mediakit.utils.files import get_safe_filename, remove_file, move_file
+from mediakit.constants import VIDEO_DEFINITIONS_ALIASES
 
 
 class DownloadStatusCodes():
@@ -28,8 +32,9 @@ class MediaResource:
         self.output_path = output_path
 
         final_definition = (
-            VIDEO_RESOLUTIONS_ALIASES
-                .get(definition, definition)
+            VIDEO_DEFINITIONS_ALIASES.get(definition, definition)
+            if output_type.startswith('video')
+            else definition
         )
         is_alias_definition = definition != final_definition
 
@@ -40,40 +45,43 @@ class MediaResource:
             )
         else:
             self.filename = get_safe_filename(
-                f'{source.title}{filename_suffix}.mp4'
+                f'{source.title}{filename_suffix}'
+                + ('.mp4' if self.output_type.startswith('video') else '.mp3')
             )
 
-        if output_type == 'video/audio':
+        if output_type.startswith('video'):
             self.video = self._get_video_stream(final_definition)
             self.total_size = self.video.filesize
             self.video_bytes_remaining = self.video.filesize
 
-            if self._is_audio_included():
-                self.has_external_audio = False
-            else:
-                self._include_external_audio()
-                self.has_external_audio = True
+            if output_type == 'videoaudio':
+                if self._is_audio_included():
+                    self.has_external_audio = False
+                else:
+                    self._include_external_audio()
+                    self.has_external_audio = True
 
-        elif output_type == 'video-only':
-            self.video = self._get_video_stream(final_definition)
-            self.total_size = self.video.filesize
-            self.video_bytes_remaining = self.video.filesize
-
-        elif output_type == 'audio-only':
+        elif output_type == 'audio':
             self.audio = self._get_audio_stream(final_definition)
             self.total_size = self.audio.filesize
             self.audio_bytes_remaining = self.audio.filesize
 
+        self.formatted_definition = (
+            f'[{output_type} '
+            if output_type != 'videoaudio'
+            else '['
+        )
+
         if definition == 'max':
-            self.formatted_definition = (
-                f'[{self.video.resolution}]'
+            self.formatted_definition += (
+                f'{self.video.resolution}]'
                 if self.output_type.startswith('video')
-                else f'[{self.audio.abr}]'
+                else f'{self.audio.abr}]'
             )
         elif is_alias_definition:
-            self.formatted_definition = f'[{definition}]'
+            self.formatted_definition += f'{definition}]'
         else:
-            self.formatted_definition = f'[{final_definition}]'
+            self.formatted_definition += f'{final_definition}]'
 
         self.download_status = DownloadStatusCodes.READY
         self.downloading_stream = None
@@ -89,8 +97,8 @@ class MediaResource:
                 filename=f'{temp_filename}[video]',
                 skip_existing=False
             )
-        if (self.output_type == 'audio-only'
-            or (self.output_type == 'video/audio' and self.has_external_audio)):
+        if (self.output_type == 'audio'
+            or (self.output_type == 'videoaudio' and self.has_external_audio)):
             self.downloading_stream = self.audio
 
             self.audio.download(
@@ -99,24 +107,31 @@ class MediaResource:
                 skip_existing=False
             )
 
-        if self.output_type == 'video/audio' and self.has_external_audio:
-            self.download_status = DownloadStatusCodes.CONVERTING
-            self._merge_video_with_external_audio()
-
+        self.download_status = DownloadStatusCodes.CONVERTING
+        self._convert_dowloaded_resources()
         self.download_status = DownloadStatusCodes.DONE
 
     def get_total_bytes_remaining(self):
-        if self.output_type == 'video/audio':
+        if self.output_type == 'videoaudio':
             if self.has_external_audio:
                 return self.video_bytes_remaining + self.audio_bytes_remaining
 
             return self.video_bytes_remaining
 
-        if self.output_type == 'video-only':
+        if self.output_type == 'videoonly':
             return self.video_bytes_remaining
 
-        if self.output_type == 'audio-only':
+        if self.output_type == 'audio':
             return self.audio_bytes_remaining
+
+    def _convert_dowloaded_resources(self):
+        if self.output_type.startswith('video'):
+            if self.output_type == 'videoaudio' and self.has_external_audio:
+                self._merge_video_with_external_audio()
+            else:
+                self._convert_downloaded_video()
+        else:
+            self._convert_downloaded_audio()
 
     def _merge_video_with_external_audio(self):
         downloaded_video_extension = self.video.mime_type.split('/')[-1]
@@ -139,6 +154,45 @@ class MediaResource:
 
         remove_file(video_path)
         remove_file(audio_path)
+
+    def _convert_downloaded_video(self):
+        downloaded_video_extension = self.video.mime_type.split('/')[-1]
+        downloaded_temp_filename = (
+            f'{temp_filename}[video].{downloaded_video_extension}'
+        )
+
+        downloaded_temp_file_path = path.join(
+            self.output_path,
+            downloaded_temp_filename
+        )
+        output_file_path = path.join(self.output_path, self.filename)
+
+        options = []
+        if self.output_type == 'videoonly':
+            options.append(ConversionOptions.NO_AUDIO)
+
+        convert_media(
+            downloaded_temp_file_path,
+            output_file_path,
+            'mp4',
+            options=options
+        )
+        remove_file(downloaded_temp_file_path)
+
+    def _convert_downloaded_audio(self):
+        downloaded_audio_extension = self.audio.mime_type.split('/')[-1]
+        downloaded_temp_filename = (
+            f'{temp_filename}[audio].{downloaded_audio_extension}'
+        )
+
+        downloaded_temp_file_path = path.join(
+            self.output_path,
+            downloaded_temp_filename
+        )
+        output_file_path = path.join(self.output_path, self.filename)
+
+        convert_media(downloaded_temp_file_path, output_file_path, 'mp3')
+        remove_file(downloaded_temp_file_path)
 
     def _is_audio_included(self):
         return self.video.is_progressive

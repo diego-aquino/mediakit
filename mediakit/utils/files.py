@@ -8,8 +8,14 @@ def file_exists(file_path):
     return path.isfile(file_path)
 
 
+def move_file(file_path, new_file_path):
+    move_command = f'mv "{file_path}" "{new_file_path}"'
+
+    run_command_in_background(move_command)
+
+
 def remove_file(file_path):
-    remove_command = f'rm -rf {file_path}'
+    remove_command = f'rm -rf "{file_path}"'
 
     run_command_in_background(remove_command)
 
