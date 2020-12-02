@@ -145,7 +145,7 @@ class DownloadCLI:
         screen.append_content(
             'Total download size: '
             + colored(
-                f'{formatted_download_size}\n\n',
+                f'{formatted_download_size}\n',
                 fore=Colors.fore.YELLOW
             ),
             ContentCategories.INFO
@@ -153,7 +153,7 @@ class DownloadCLI:
 
     def ask_for_confirmation_to_download(self):
         prompt_message = (
-            'Confirm download? '
+            '\nConfirm download? '
             + colored(
                 '(Y/n) ',
                 fore=Colors.fore.CYAN,
