@@ -277,6 +277,7 @@ class DownloadCLI:
             return [default_media_resource]
 
         media_resources_to_download = []
+        resources_registered_to_download = set()
 
         lowecased_formats = [
             selected_format.lower()
@@ -319,6 +320,12 @@ class DownloadCLI:
                     },
                 })
 
+            if (
+                (download_format, available_definition)
+                in resources_registered_to_download
+            ):
+                continue
+
             if should_append_format_to_filename:
                 filename_suffix = (
                     (
@@ -345,6 +352,9 @@ class DownloadCLI:
             )
 
             media_resources_to_download.append(media_resource)
+            resources_registered_to_download.add(
+                (download_format, available_definition)
+            )
 
         return media_resources_to_download
 
