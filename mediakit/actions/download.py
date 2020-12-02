@@ -7,6 +7,7 @@ from mediakit.streams.arguments import parse_download_arguments
 from mediakit.streams.cli import DownloadCLI
 from mediakit.utils.files import get_filename_from
 from mediakit.constants import FFMPEG_BINARY
+from mediakit.globals import global_config
 from mediakit import exceptions
 
 
@@ -41,9 +42,10 @@ def download():
         download_cli.show_video_heading()
         download_cli.show_download_summary()
 
-        confirmed = download_cli.ask_for_confirmation_to_download()
-        if not confirmed:
-            return
+        if not global_config.answer_yes_to_all_questions:
+            confirmed = download_cli.ask_for_confirmation_to_download()
+            if not confirmed:
+                return
 
         video.register_on_progress_callback(on_download_progress)
 
