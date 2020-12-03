@@ -1,4 +1,5 @@
-import re
+from . import regex
+
 
 def limit_text_length(text, limit_of_caracters):
     if len(text) > limit_of_caracters:
@@ -8,16 +9,16 @@ def limit_text_length(text, limit_of_caracters):
 
     return text
 
-def len_ansi_safe(string):
-    ansi_escape_codes_regex = r'\x1b\[[;\d]*[A-Za-z]'
 
-    string_striped_of_ansi_codes = re.sub(
-        ansi_escape_codes_regex,
+def len_ansi_safe(string):
+    string_striped_of_ansi_codes = regex.sub(
+        regex.ANSI_ESCAPE_CODES_REGEX,
         '',
         string
     )
 
     return len(string_striped_of_ansi_codes)
+
 
 def parse_int(string):
     integer_section_as_list = []
