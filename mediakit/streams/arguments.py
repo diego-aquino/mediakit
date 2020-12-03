@@ -11,6 +11,7 @@ from mediakit.globals import global_config
 class GlobalArguments:
     help = ['-h', '--help']
     yes = ['-y', '--yes']
+    version = ['-v', '--version']
 
 
 class Parser(ArgumentParser):
@@ -24,6 +25,11 @@ class Parser(ArgumentParser):
             *GlobalArguments.yes,
             action='store_true',
             help='Answer "yes" to all questions beforehand'
+        )
+        self.add_argument(
+            *GlobalArguments.version,
+            action='store_true',
+            help='Show the current version'
         )
 
     def add_download_arguments(self):
@@ -97,6 +103,10 @@ def update_global_config_based_on_arguments(arguments):
     )
 
     global_config.answer_yes_to_all_questions = answer_yes_to_all_questions
+
+
+def show_current_version():
+    screen.append_content(f'{version}\n')
 
 
 def show_help_message():

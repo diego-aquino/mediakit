@@ -3,6 +3,7 @@ from mediakit.streams.arguments import (
     command_args,
     GlobalArguments,
     show_help_message,
+    show_current_version,
     show_arguments_not_recognized_error
 )
 
@@ -12,6 +13,9 @@ def get_command_actions():
 
     if command_args.has_argument(GlobalArguments.help):
         actions.append(show_help_message)
+        return actions
+    if command_args.has_argument(GlobalArguments.version):
+        actions.append(show_current_version)
         return actions
     if command_args.has_video_url():
         actions.append(download)
