@@ -14,6 +14,7 @@ from mediakit.constants import (
     AUDIO_DEFINITIONS,
     AVAILABLE_DEFINITIONS
 )
+from mediakit.globals import global_config
 from mediakit import exceptions
 
 loading_dots = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
@@ -593,17 +594,38 @@ class DownloadCLI:
         loaded_section_length = floor(
             available_space_for_loading_bar * progress_percentage
         )
+        not_loaded_section_length = (
+            available_space_for_loading_bar
+            - loaded_section_length
+        )
+
+        if global_config.ui_colors_disabled:
+            loaded_section_character = '#'
+            not_loaded_section_character = '-'
+            wrapper_characters = {
+                'left': '[',
+                'right': ']',
+            }
+        else:
+            loaded_section_character = '█'
+            not_loaded_section_character = '█'
+            wrapper_characters = {
+                'left': '',
+                'right': '',
+            }
 
         progress_bar_left = (
             '  '
+            + wrapper_characters['left']
             + colored(
-                '█' * loaded_section_length,
+                loaded_section_character * loaded_section_length,
                 fore=status_color
             )
             + colored(
-                '█' * (available_space_for_loading_bar - loaded_section_length),
+                not_loaded_section_character * not_loaded_section_length,
                 style=Colors.style.DIM
             )
+            + wrapper_characters['right']
         )
 
         progress_bar = progress_bar_left + progress_bar_right
