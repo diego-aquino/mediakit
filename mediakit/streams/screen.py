@@ -1,3 +1,4 @@
+import sys
 from math import ceil
 
 from clint.textui.cols import console_width
@@ -101,7 +102,7 @@ class Screen:
             )
         )
 
-        print(clear_expression, end='')
+        print(clear_expression, end='', file=sys.stderr)
 
     def get_console_width(self):
         return console_width({})
@@ -142,7 +143,7 @@ class Screen:
             self._erase_prompt_entry()
 
     def _render_content(self, content):
-        print(content.inner_text, end='')
+        print(content.inner_text, end='', file=sys.stderr)
 
     def _clear_lines_starting_at(self, content):
         current_console_width = self.get_console_width()

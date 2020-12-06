@@ -1,4 +1,4 @@
-from sys import argv
+import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from mediakit.info import name, version, description
@@ -53,7 +53,7 @@ class Parser(ArgumentParser):
 
 
 class CommandArgs:
-    def __init__(self, args=argv):
+    def __init__(self, args=sys.argv):
         self.arguments = args[1:]
         self.unique_arguments = set(self.arguments)
 
@@ -111,7 +111,9 @@ def show_current_version():
 
 def show_help_message():
     command_args.parser.add_download_arguments()
-    command_args.parser.print_help()
+    screen.append_content(
+        command_args.parser.format_help()
+    )
 
 
 def show_arguments_not_recognized_error():
