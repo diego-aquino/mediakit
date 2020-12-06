@@ -1,4 +1,5 @@
 from . import info
+from .main import main
 
 __title__ = info.name
 __version__ = info.version
