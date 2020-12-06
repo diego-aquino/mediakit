@@ -1,5 +1,7 @@
 import colorama
 
+from mediakit.globals import global_config
+
 
 class Colors():
     fore = colorama.Fore
@@ -33,5 +35,8 @@ def colored(
         lambda value: str(value),
         values
     ))
+
+    if global_config.ui_colors_disabled:
+        return joined_text
 
     return str(ColoredText(joined_text, fore, back, style))
