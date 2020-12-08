@@ -12,6 +12,7 @@ class GlobalArguments:
     help = ['-h', '--help']
     yes = ['-y', '--yes']
     version = ['-v', '--version']
+    no_colors = ['-nc', '--no-colors']
 
 
 class Parser(ArgumentParser):
@@ -30,6 +31,12 @@ class Parser(ArgumentParser):
             *GlobalArguments.version,
             action='store_true',
             help='Show the current version'
+        )
+        self.add_argument(
+            *GlobalArguments.no_colors,
+            dest='no_colors',
+            action='store_true',
+            help='Disable the colors of the interface'
         )
 
     def add_download_arguments(self):
@@ -52,24 +59,41 @@ class Parser(ArgumentParser):
         )
 
 
+def update_global_config_based_on_arguments(arguments):
+    global_config_from_arguments = [
+        ['yes', 'answer_yes_to_all_questions'],
+        ['no_colors', 'ui_colors_disabled']
+    ]
+
+    for argument_name, global_config_field in global_config_from_arguments:
+        default_value = getattr(global_config, global_config_field)
+        field_value = getattr(arguments, argument_name, default_value)
+
+        setattr(global_config, global_config_field, field_value)
+
+
 class CommandArgs:
-    def __init__(self, args=sys.argv):
+    def __init__(self, args=sys.argv, parse_and_update_global_config=True):
         self.arguments = args[1:]
         self.unique_arguments = set(self.arguments)
 
         self.parser = Parser(
             formatter_class=RawDescriptionHelpFormatter,
-            description=(
-                colored(
-                    f'{name.lower()} v{version}\n',
-                    style=Colors.style.BRIGHT
-                )
-                + description
-            ),
             add_help=False
         )
 
         self.parser.add_global_arguments()
+        self.global_arguments = self.parser.parse_known_args()[0]
+        if parse_and_update_global_config:
+            update_global_config_based_on_arguments(self.global_arguments)
+
+        self.parser.description = (
+            colored(
+                f'{name.lower()} v{version}\n',
+                style=Colors.style.BRIGHT
+            )
+            + description
+        )
 
     def has_argument(self, possible_arguments):
         intersection = (
@@ -93,16 +117,6 @@ class CommandArgs:
         arguments = self.parser.parse_args()
 
         return arguments
-
-
-def update_global_config_based_on_arguments(arguments):
-    answer_yes_to_all_questions = getattr(
-        arguments,
-        'yes',
-        global_config.answer_yes_to_all_questions
-    )
-
-    global_config.answer_yes_to_all_questions = answer_yes_to_all_questions
 
 
 def show_current_version():

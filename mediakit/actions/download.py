@@ -3,10 +3,7 @@ from os import path
 from pytube import YouTube
 from pytube.exceptions import RegexMatchError as PytubeRegexMatchError
 
-from mediakit.streams.arguments import (
-    command_args,
-    update_global_config_based_on_arguments
-)
+from mediakit.streams.arguments import command_args
 from mediakit.streams.cli import DownloadCLI
 from mediakit.utils.files import get_filename_from
 from mediakit.constants import FFMPEG_BINARY
@@ -19,7 +16,6 @@ def download():
         download_cli.update_download_progress_info(bytes_remaining)
 
     arguments = command_args.parse_download_arguments()
-    update_global_config_based_on_arguments(arguments)
 
     video_url = arguments.video_url
     output_path = path.abspath(arguments.output_path)
