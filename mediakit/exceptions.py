@@ -77,3 +77,18 @@ class NoAvailableSpecifiedFormats(MediaKitException):
         self.category = ContentCategories.ERROR
 
         super().__init__(self.message)
+
+
+class NoSuchFile(MediaKitException):
+    def __init__(self, supposed_file):
+        self.message = (
+            '\nNo such file: '
+            + colored(
+                supposed_file,
+                fore=Colors.fore.MAGENTA
+            )
+            + '\n\n'
+        )
+        self.category = ContentCategories.ERROR
+
+        super().__init__(self.message)

@@ -5,7 +5,11 @@ from pytube.exceptions import RegexMatchError as PytubeRegexMatchError
 
 from mediakit.streams.arguments import command_args
 from mediakit.streams.cli import DownloadCLI
-from mediakit.utils.files import get_filename_from, read_video_urls_from
+from mediakit.utils.files import (
+    get_filename_from,
+    read_video_urls_from,
+    file_exists
+)
 from mediakit.constants import FFMPEG_BINARY
 from mediakit.globals import global_config
 from mediakit import exceptions
@@ -17,8 +21,13 @@ def download():
 
     arguments = command_args.parse_download_arguments()
 
-    if global_config.batch_file:
-        video_urls_to_download = read_video_urls_from(global_config.batch_file)
+    was_batch_file_provided = global_config.batch_file is not None
+    if was_batch_file_provided:
+        if file_exists(global_config.batch_file):
+            video_urls_to_download = read_video_urls_from(global_config.batch_file)
+        else:
+            exceptions.NoSuchFile(global_config.batch_file).show_message()
+            return
     else:
         video_urls_to_download = [arguments.video_url]
 
