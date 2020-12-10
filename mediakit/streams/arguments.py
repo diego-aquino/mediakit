@@ -13,6 +13,7 @@ class GlobalArguments:
     yes = ['-y', '--yes']
     version = ['-v', '--version']
     no_colors = ['-nc', '--no-colors']
+    batch = ['-b', '--batch']
 
 
 class Parser(ArgumentParser):
@@ -38,12 +39,18 @@ class Parser(ArgumentParser):
             action='store_true',
             help='Disable the colors of the interface'
         )
+        self.add_argument(
+            *GlobalArguments.batch,
+            nargs=1,
+            help='Download videos from URLs stored in a batch file'
+        )
 
     def add_download_arguments(self):
-        self.add_argument(
-            'video_url',
-            help='URL of the YouTube video to download'
-        )
+        if not global_config.batch_file:
+            self.add_argument(
+                'video_url',
+                help='URL of the YouTube video to download'
+            )
         self.add_argument(
             'output_path',
             nargs='?',
@@ -60,16 +67,33 @@ class Parser(ArgumentParser):
 
 
 def update_global_config_based_on_arguments(arguments):
-    global_config_from_arguments = [
-        ['yes', 'answer_yes_to_all_questions'],
-        ['no_colors', 'ui_colors_disabled']
-    ]
+    answer_yes_to_all_questions = getattr(
+        arguments,
+        'yes',
+        global_config.answer_yes_to_all_questions
+    )
+    ui_colors_disabled = getattr(
+        arguments,
+        'no_colors',
+        global_config.ui_colors_disabled
+    )
+    batch_file = getattr(
+        arguments,
+        'batch',
+        global_config.batch_file
+    )
 
-    for argument_name, global_config_field in global_config_from_arguments:
-        default_value = getattr(global_config, global_config_field)
-        field_value = getattr(arguments, argument_name, default_value)
+    global_config.answer_yes_to_all_questions = answer_yes_to_all_questions
+    global_config.ui_colors_disabled = ui_colors_disabled
 
-        setattr(global_config, global_config_field, field_value)
+    was_batch_file_provided = (
+        isinstance(batch_file, list)
+        and len(batch_file) == 1
+    )
+    global_config.batch_file = (
+        batch_file[0] if was_batch_file_provided
+        else global_config.batch_file
+    )
 
 
 class CommandArgs:
