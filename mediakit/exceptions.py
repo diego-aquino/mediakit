@@ -92,3 +92,18 @@ class NoSuchFile(MediaKitException):
         self.category = ContentCategories.ERROR
 
         super().__init__(self.message)
+
+
+class NoVideoURLsInBatchFile(MediaKitException):
+    def __init__(self, batch_file):
+        self.message = (
+            '\nCould not find any valid video URLs in '
+            + colored(
+                batch_file,
+                fore=Colors.fore.MAGENTA
+            )
+            + '\nPlease check your entries and try again.\n\n'
+        )
+        self.category = ContentCategories.ERROR
+
+        super().__init__(self.message)

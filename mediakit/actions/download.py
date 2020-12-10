@@ -15,21 +15,40 @@ from mediakit.globals import global_config
 from mediakit import exceptions
 
 
+def _get_video_urls_to_download(arguments):
+    was_batch_file_provided = global_config.batch_file is not None
+
+    if not was_batch_file_provided:
+        return [arguments.video_url]
+
+    if file_exists(global_config.batch_file):
+        video_urls_to_download = read_video_urls_from(global_config.batch_file)
+
+        if len(video_urls_to_download) == 0:
+            raise exceptions.NoVideoURLsInBatchFile(
+                global_config.batch_file
+            )
+
+        return video_urls_to_download
+
+    else:
+        raise exceptions.NoSuchFile(global_config.batch_file)
+
+
 def download():
     def on_download_progress(stream, chunk, bytes_remaining):
         download_cli.update_download_progress_info(bytes_remaining)
 
     arguments = command_args.parse_download_arguments()
 
-    was_batch_file_provided = global_config.batch_file is not None
-    if was_batch_file_provided:
-        if file_exists(global_config.batch_file):
-            video_urls_to_download = read_video_urls_from(global_config.batch_file)
-        else:
-            exceptions.NoSuchFile(global_config.batch_file).show_message()
-            return
-    else:
-        video_urls_to_download = [arguments.video_url]
+    try:
+        video_urls_to_download = _get_video_urls_to_download(arguments)
+    except (
+        exceptions.NoSuchFile,
+        exceptions.NoVideoURLsInBatchFile
+    ) as exception:
+        exception.show_message()
+        return
 
     output_path = path.abspath(arguments.output_path)
     filename = get_filename_from(output_path)
