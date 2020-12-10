@@ -1,3 +1,4 @@
+from os import path
 from threading import Thread
 from time import sleep
 from math import floor
@@ -26,6 +27,10 @@ class DownloadCLI:
         self.max_width = 80
 
         self.loading_label = None
+        self.video_heading = None
+        self.ready_to_download_label = None
+        self.total_download_size_label = None
+        self.confirm_download_prompt_message = None
 
         self.video = None
         self.output_path = None
@@ -51,8 +56,34 @@ class DownloadCLI:
 
         self.is_terminated = False
 
-    def start(self):
-        self._show_header()
+    def start(self, video_urls_to_download):
+        self._show_header(video_urls_to_download)
+
+    def show_loading_label(self):
+        self.loading_label = screen.append_content(
+            '\nLoading video.\n\n',
+            ContentCategories.INFO
+        )
+
+        number_of_dots = 1
+
+        def run_loading_animation():
+            nonlocal number_of_dots
+
+            while self.video is None and not self.is_terminated:
+                number_of_dots = (number_of_dots + 1) % 4
+
+                if self.loading_label is None:
+                    break
+
+                screen.update_content(
+                    self.loading_label,
+                    '\nLoading video' + '.' * number_of_dots + '\n\n'
+                )
+
+                sleep(0.4)
+
+        Thread(target=run_loading_animation).start()
 
     def register_download_info(self, video, output_path, filename, formats):
         self.video = video
@@ -88,8 +119,9 @@ class DownloadCLI:
             - 3
         )
 
-        video_summary = (
-            colored(
+        video_heading = (
+            '\n'
+            + colored(
                 formatted_video_title,
                 fore=Colors.fore.CYAN,
                 style=Colors.style.BRIGHT
@@ -101,7 +133,7 @@ class DownloadCLI:
             )
         )
 
-        screen.append_content(video_summary)
+        self.video_heading = screen.append_content(video_heading)
 
     def show_download_summary(self):
         if self.were_all_formats_skipped():
@@ -128,7 +160,7 @@ class DownloadCLI:
             or len(self.formats_replaced_by_fallback) > 0
         )
 
-        screen.append_content(
+        self.ready_to_download_label = screen.append_content(
             ('\n' if is_preceded_by_format_warnings else '')
             + 'Ready to download '
             + colored(
@@ -143,7 +175,7 @@ class DownloadCLI:
             ),
             ContentCategories.INFO
         )
-        screen.append_content(
+        self.total_download_size_label = screen.append_content(
             'Total download size: '
             + colored(
                 f'{formatted_download_size}\n',
@@ -161,10 +193,12 @@ class DownloadCLI:
             )
         )
 
-        answer = screen.prompt(
+        answer, prompt_message = screen.prompt(
             prompt_message,
             valid_inputs=['', 'y', 'n']
         )
+
+        self.confirm_download_prompt_message = prompt_message
 
         return answer != 'n'
 
@@ -222,6 +256,22 @@ class DownloadCLI:
             )
         )
 
+    def reset_state(self):
+        self.video = None
+        self.output_path = None
+        self.filename = None
+        self.short_video_title = None
+
+        self.available_formats = { 'video': [], 'audio': [] }
+        self.media_resources_to_download = []
+        self.skipped_formats = []
+        self.formats_replaced_by_fallback = []
+
+        self.downloading_media_resource = None
+        self.download_progress_ui = None
+        self.rotating_line_frame = 0
+        self.loading_dots_frame = 0
+
     def terminate(self):
         self.is_terminated = True
 
@@ -235,36 +285,54 @@ class DownloadCLI:
             and len(self.skipped_formats) > 0
         )
 
-    def _show_header(self):
+    def _show_header(self, video_urls_to_download):
         screen.append_content(colored(
-            f'{name.lower()} v{version}\n\n',
+            f'{name.lower()} v{version}\n',
             style=Colors.style.BRIGHT
         ))
 
-        self.loading_label = screen.append_content(
-            'Loading video.\n\n',
+        if global_config.batch_file:
+            self._show_batch_file_info(video_urls_to_download)
+
+    def _show_batch_file_info(self, valid_video_urls_in_batch_file):
+        batch_filename = path.basename(global_config.batch_file)
+
+        number_of_valid_urls = len(valid_video_urls_in_batch_file)
+
+        screen.append_content(
+            '\nReading URLs from '
+            + colored(
+                batch_filename,
+                fore=Colors.fore.CYAN,
+                style=Colors.style.BRIGHT
+            )
+            + '...\n',
             ContentCategories.INFO
         )
-
-        number_of_dots = 1
-
-        def run_loading_animation():
-            nonlocal number_of_dots
-
-            while self.video is None and not self.is_terminated:
-                number_of_dots = (number_of_dots + 1) % 4
-
-                if self.loading_label is None:
-                    break
-
-                screen.update_content(
-                    self.loading_label,
-                    'Loading video' + '.' * number_of_dots + '\n\n'
-                )
-
-                sleep(0.4)
-
-        Thread(target=run_loading_animation).start()
+        screen.append_content(
+            'Found '
+            + colored(
+                f'{number_of_valid_urls} ',
+                fore=Colors.fore.CYAN,
+                style=Colors.style.BRIGHT
+            )
+            + (
+                colored('video URLs', fore=Colors.fore.CYAN)
+                if number_of_valid_urls > 1
+                else colored('video URL', fore=Colors.fore.CYAN)
+            )
+            + '. Preparing to download '
+            + (
+                'them' if number_of_valid_urls > 1
+                else 'it'
+            )
+            + (
+                ' sequentially' if number_of_valid_urls > 1
+                else ''
+            )
+            + '...\n',
+            ContentCategories.INFO
+        )
 
     def _get_media_resources_to_download(self, formats):
         if len(formats) == 0:
@@ -631,6 +699,13 @@ class DownloadCLI:
         progress_bar = progress_bar_left + progress_bar_right
 
         return progress_bar
+
+    def clear_detailed_download_info_from_screen(self):
+        if self.confirm_download_prompt_message:
+            screen.remove_content(self.confirm_download_prompt_message)
+        screen.remove_content(self.total_download_size_label)
+        screen.remove_content(self.ready_to_download_label)
+        screen.remove_content(self.video_heading)
 
     def _format_video_length(self):
         seconds_section = self.video.length % 60

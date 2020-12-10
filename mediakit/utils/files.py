@@ -2,6 +2,7 @@ from os import path
 import re
 
 from mediakit.utils.commands import run_command_in_background
+from mediakit.utils import regex
 
 
 def file_exists(file_path):
@@ -56,3 +57,16 @@ def increment_filename_if_exists(file_path):
             file_path_dirname,
             f'{filename_without_extension}({filename_number}).{extension}'
         )
+
+
+def read_video_urls_from(batch_file_path):
+    video_urls = []
+
+    with open(batch_file_path, 'r', encoding='utf-8') as batch_file:
+        for line in batch_file:
+            clear_line = line.strip()
+
+            if regex.is_video_url_like(clear_line):
+                video_urls.append(clear_line)
+
+    return video_urls
