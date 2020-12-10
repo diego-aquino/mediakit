@@ -13,11 +13,12 @@ def get_command_actions():
 
     if command_args.has_argument(GlobalArguments.help):
         actions.append(show_help_message)
-        return actions
     if command_args.has_argument(GlobalArguments.version):
         actions.append(show_current_version)
-        return actions
-    if command_args.has_video_url():
+    if (
+        command_args.has_video_url()
+        or command_args.has_argument(GlobalArguments.batch)
+    ):
         actions.append(download)
 
     if len(actions) == 0:
