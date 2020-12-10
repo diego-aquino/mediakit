@@ -140,7 +140,14 @@ class Screen:
             if valid_entry:
                 return entry, self.prompt_message
 
-            self._erase_prompt_entry()
+            self.erase_prompt_entry(self.prompt_message)
+
+    def erase_prompt_entry(self, prompt):
+        lines_occupied_by_entry = 2 # <entry>\n<empty line> -> 2 lines to clear
+        self.clear_lines(lines_occupied_by_entry)
+
+        self._clear_lines_starting_at(prompt)
+        self._render_contents_starting_at(prompt)
 
     def _render_content(self, content):
         print(content.inner_text, end='', file=sys.stderr)
@@ -163,13 +170,6 @@ class Screen:
     def _render_contents_starting_at(self, content):
         for i in range(content.index_on_screen, len(self.contents)):
             self._render_content(self.contents[i])
-
-    def _erase_prompt_entry(self):
-        lines_occupied_by_entry = 2 # <entry>\n<empty line> -> 2 lines to clear
-        self.clear_lines(lines_occupied_by_entry)
-
-        self._clear_lines_starting_at(self.prompt_message)
-        self._render_contents_starting_at(self.prompt_message)
 
     def _count_lines_occupied_by(self, text, current_console_width):
         lines = text.split('\n')

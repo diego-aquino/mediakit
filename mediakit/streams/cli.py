@@ -702,6 +702,7 @@ class DownloadCLI:
 
     def clear_detailed_download_info_from_screen(self):
         if self.confirm_download_prompt_message:
+            screen.erase_prompt_entry(self.confirm_download_prompt_message)
             screen.remove_content(self.confirm_download_prompt_message)
         screen.remove_content(self.total_download_size_label)
         screen.remove_content(self.ready_to_download_label)
