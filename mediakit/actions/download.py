@@ -65,7 +65,7 @@ def download():
             if not global_config.answer_yes_to_all_questions:
                 confirmed = download_cli.ask_for_confirmation_to_download()
                 if not confirmed:
-                    return
+                    continue
 
             video.register_on_progress_callback(on_download_progress)
 
