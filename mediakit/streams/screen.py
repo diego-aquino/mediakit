@@ -138,7 +138,7 @@ class Screen:
             )
 
             if valid_entry:
-                return entry
+                return entry, self.prompt_message
 
             self._erase_prompt_entry()
 
