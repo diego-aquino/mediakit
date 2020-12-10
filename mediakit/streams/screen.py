@@ -148,14 +148,15 @@ class Screen:
     def _clear_lines_starting_at(self, content):
         current_console_width = self.get_console_width()
 
-        lines_to_clear = 0
-        for i in range(content.index_on_screen, len(self.contents)):
-            content = self.contents[i]
+        texts_to_clear = map(
+            lambda content_to_clear: content_to_clear.inner_text,
+            self.contents[content.index_on_screen:]
+        )
 
-            lines_to_clear += self._count_lines_occupied_by(
-                content,
-                current_console_width
-            )
+        lines_to_clear = self._count_lines_occupied_by(
+            ''.join(texts_to_clear),
+            current_console_width
+        )
 
         self.clear_lines(lines_to_clear)
 
@@ -170,8 +171,8 @@ class Screen:
         self._clear_lines_starting_at(self.prompt_message)
         self._render_contents_starting_at(self.prompt_message)
 
-    def _count_lines_occupied_by(self, content, current_console_width):
-        lines = content.inner_text.split('\n')
+    def _count_lines_occupied_by(self, text, current_console_width):
+        lines = text.split('\n')
 
         lines_occupied = 0
         for i in range(len(lines)):
