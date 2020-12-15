@@ -9,7 +9,8 @@
 <p align="center">
   <a href="#features">Features</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#installation">Installation</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#how-to-use">How to use</a>
+  <a href="#how-to-use">How to use</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <a href="#api-reference">API Reference</a>
 </p>
 
 ---
@@ -118,6 +119,21 @@ mediakit [-b | --batch] <batch_file>
 By running this, Mediakit will read all video URL's in the provided file and download them sequentially.
 
 > You can also use other options along with `--batch`, such as specify which formats and definitions you want your downloads to be.
+
+---
+
+## API Reference
+
+Mediakit currently supports the following command options:
+
+| Option | Description | Example |
+|-:|-|-|
+| `-h`, `--help` | Show help | `mediakit -h` |
+| `-v`, `--version` | Show your installed version | `mediakit -v` |
+| `-y`, `--yes` | Answer "yes" to all questions beforehand | `mediakit https://... -y` |
+| `-b <batch_file>`, <br /> `--batch <batch_file>` | Download videos from URL's stored in a batch file | `mediakit -b urls.txt` |
+| `-nc`, `--no-colors` | Disable the colors of the interface | `mediakit https://... -nc` |
+| `-f <formats>`, <br /> `--formats <formats>` | Specify which formats you want to download | `mediakit https://... -f audio` |
 
 ---
 
