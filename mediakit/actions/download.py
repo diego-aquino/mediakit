@@ -106,7 +106,6 @@ def download():
         except Exception:
             download_cli.remove_loading_label()
             exceptions.UnspecifiedError().show_message()
-            raise
         finally:
             if is_last_video:
                 download_cli.terminate()
