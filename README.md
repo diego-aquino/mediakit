@@ -107,6 +107,18 @@ You can also download the audio (as `mp3`) or the video without audio by using t
   # download video with 1080p, audio with highest definition available and video-only (without audio) with 720p
   ```
 
+### Downloading multiple videos sequentially
+
+With the option `-b` (or its longhand `--batch`), you can download multiple videos sequentially, by providing a batch file (a text file containing one or more video URL's, each one in a separate line):
+
+```bash
+mediakit [-b | --batch] <batch_file>
+```
+
+By running this, Mediakit will read all video URL's in the provided file and download them sequentially.
+
+> You can also use other options along with `--batch`, such as specify which formats and definitions you want your downloads to be.
+
 ---
 
 Made by [Diego Aquino](https://github.com/diego-aquino/) :sunglasses:. [Connect with me!](https://www.linkedin.com/in/diego-aquino)
