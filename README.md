@@ -20,7 +20,6 @@
       alt="Latest version on PyPI"
     >
   </a>
-
   <a
     href="https://pypi.org/project/mediakit/"
     target="_blank"
@@ -31,7 +30,6 @@
       alt="Monthly downloads"
     >
   </a>
-
   <a
     href="https://github.com/diego-aquino/mediakit/graphs/contributors"
     target="_blank"
@@ -42,7 +40,6 @@
       alt="Number of contributors"
     >
   </a>
-
   <a
     href="https://github.com/diego-aquino/mediakit/blob/main/LICENSE.txt"
     target="_blank"
