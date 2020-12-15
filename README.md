@@ -1,5 +1,5 @@
 <h1 align="center">
-  MediaKit
+  Mediakit
 </h1>
 
 <p align="center">
@@ -14,7 +14,7 @@
 
 ---
 
-**MediaKit** is a command line tool for downloading videos from YouTube.
+**Mediakit** is a command line tool for downloading videos from YouTube.
 
 ## Features
 
@@ -23,7 +23,7 @@
 
 ## Installation
 
-To install MediaKit, you'll need to have [Python 3.6+](https://www.python.org/downloads/) and [pip](https://pip.pypa.io/en/stable/installing/) installed on your computer. Then, run:
+To install Mediakit, you'll need to have [Python 3.6+](https://www.python.org/downloads/) and [pip](https://pip.pypa.io/en/stable/installing/) installed on your computer. Then, run:
 
 ```bash
 pip install mediakit
@@ -31,7 +31,7 @@ pip install mediakit
 
 ## How to use
 
-You can download a video with MediaKit by running:
+You can download a video with Mediakit by running:
 
 ```bash
 mediakit <video_url> [<output_path>]
@@ -65,13 +65,13 @@ After running this command, an interactive CLI will guide you through the downlo
 
 ### Selecting specific download formats
 
-By default, MediaKit will download the specified video with the highest available resolution. However, you can select specific download formats with the flag `--formats` (or its shorthand `-f`), followed by one or more desired formats:
+By default, Mediakit will download the specified video with the highest available resolution. However, you can select specific download formats with the flag `--formats` (or its shorthand `-f`), followed by one or more desired formats:
 
 ```bash
 mediakit <video_url> [<output_path>] [-f | --formats]
 ```
 
-You can also download the audio (as `mp3`) or the video without audio by using the format options **`audio`** and **`videoonly`**, respectively. If no resolution is provided, MediaKit will download the media with highest quality, although you can select a specific resolution by adding it right after the option used (e.g. `-f audio 128kbps`). Check the examples bellow for more use details.
+You can also download the audio (as `mp3`) or the video without audio by using the format options **`audio`** and **`videoonly`**, respectively. If no resolution is provided, Mediakit will download the media with highest quality, although you can select a specific resolution by adding it right after the option used (e.g. `-f audio 128kbps`). Check the examples bellow for more use details.
 
 > If a resolution is not available for the video, the download will fall back to the closest available resolution lower than the one specified.
 

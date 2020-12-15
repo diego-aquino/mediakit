@@ -1,4 +1,4 @@
-name = 'MediaKit'
+name = 'Mediakit'
 version = '0.4.2'
 description = 'Download YouTube videos fast, directly from the command line'
 author = 'Diego Aquino'
