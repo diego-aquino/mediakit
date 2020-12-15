@@ -2,12 +2,12 @@ from mediakit.streams.screen import screen, ContentCategories
 from mediakit.streams.colors import colored, Colors
 
 
-class MediaKitException(Exception):
+class MediakitException(Exception):
     def show_message(self):
         screen.append_content(self.message, self.category)
 
 
-class CommandUnavailable(MediaKitException):
+class CommandUnavailable(MediakitException):
     def __init__(self, command):
         self.message = (
             f"Command '{command}' is not available.\n\n"
@@ -17,10 +17,10 @@ class CommandUnavailable(MediaKitException):
         super().__init__(self.message)
 
 
-class FFMPEGNotAvailable(MediaKitException):
+class FFMPEGNotAvailable(MediakitException):
     def __init__(self):
         self.message = (
-            'FFmpeg is a required package for MediaKit, '
+            'FFmpeg is a required package for Mediakit, '
             "but it doesn't appear to be installed.\n"
             'You can install FFmpeg at https://ffmpeg.org/download.html.\n\n'
         )
@@ -29,7 +29,7 @@ class FFMPEGNotAvailable(MediaKitException):
         super().__init__(self.message)
 
 
-class InvalidVideoURLError(MediaKitException):
+class InvalidVideoURLError(MediakitException):
     def __init__(self):
         self.message = (
             'Could not recognize the provided URL. Please, try again.\n\n'
@@ -39,7 +39,7 @@ class InvalidVideoURLError(MediaKitException):
         super().__init__(self.message)
 
 
-class UnspecifiedError(MediaKitException):
+class UnspecifiedError(MediakitException):
     def __init__(self):
         self.message = 'Something went wrong. :(\nPlease, try again.\n\n'
         self.category = ContentCategories.ERROR
@@ -47,7 +47,7 @@ class UnspecifiedError(MediaKitException):
         super().__init__(self.message)
 
 
-class NoAvailableSpecifiedFormats(MediaKitException):
+class NoAvailableSpecifiedFormats(MediakitException):
     def __init__(self, available_formats):
         self.message = (
             'None of the specified formats were found.\n'
@@ -79,7 +79,7 @@ class NoAvailableSpecifiedFormats(MediaKitException):
         super().__init__(self.message)
 
 
-class NoSuchFile(MediaKitException):
+class NoSuchFile(MediakitException):
     def __init__(self, supposed_file):
         self.message = (
             '\nNo such file: '
@@ -94,7 +94,7 @@ class NoSuchFile(MediaKitException):
         super().__init__(self.message)
 
 
-class NoVideoURLsInBatchFile(MediaKitException):
+class NoVideoURLsInBatchFile(MediakitException):
     def __init__(self, batch_file):
         self.message = (
             '\nCould not find any valid video URLs in '
