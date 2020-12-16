@@ -16,7 +16,7 @@
     rel="noopener noreferrer"
   >
     <img
-      src="https://img.shields.io/pypi/v/mediakit.svg?color=FFD275&label=PyPI"
+      src="https://img.shields.io/pypi/v/mediakit.svg?color=108D94&label=PyPI"
       alt="Latest version on PyPI"
     >
   </a>
@@ -26,7 +26,7 @@
     rel="noopener noreferrer"
   >
     <img
-      src="https://img.shields.io/pypi/dm/mediakit.svg?color=FFD275"
+      src="https://img.shields.io/pypi/dm/mediakit.svg?color=108D94"
       alt="Monthly downloads"
     >
   </a>
@@ -36,7 +36,7 @@
     rel="noopener noreferrer"
   >
     <img
-      src="https://img.shields.io/github/contributors/diego-aquino/mediakit.svg?color=FFD275"
+      src="https://img.shields.io/github/contributors/diego-aquino/mediakit.svg?color=108D94"
       alt="Number of contributors"
     >
   </a>
@@ -46,7 +46,7 @@
     rel="noopener noreferrer"
   >
     <img
-      src="https://img.shields.io/github/license/diego-aquino/mediakit.svg?color=FFD275"
+      src="https://img.shields.io/github/license/diego-aquino/mediakit.svg?color=108D94"
       alt="License"
     >
   </a>
