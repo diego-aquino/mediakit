@@ -4,6 +4,9 @@ venv/
 # Cache
 __pycache__/
 
+# Build
+dist/
+build/
+
 # Miscellaneous
 temp/
-dist/

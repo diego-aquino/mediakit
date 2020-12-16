@@ -32,8 +32,12 @@ clean-pyc:
 	find . -name '*~' -exec rm -f {} +
 	find . -name '__pycache__' -exec rm -rf {} +
 
+clean-media:
+	find . -name '*.mp*' -exec rm -f {} +
+	find . -name '*.webm' -exec rm -f {} +
+
 build: clean
-	$(PYTHON) setup.py sdist
+	$(PYTHON) setup.py sdist bdist_wheel
 
 upload:
 	twine upload dist/*

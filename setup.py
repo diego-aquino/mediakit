@@ -39,7 +39,8 @@ setup(
         'clint',
         'imageio',
         'imageio-ffmpeg',
-        'colorama'
+        'colorama',
+        'wheel'
     ],
     entry_points={
         'console_scripts': [
