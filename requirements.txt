@@ -3,3 +3,4 @@ clint
 imageio
 imageio-ffmpeg
 colorama
+wheel
