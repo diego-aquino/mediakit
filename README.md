@@ -63,6 +63,10 @@
 
 **Mediakit** is a command line tool to download videos from YouTube.
 
+<p align="center">
+  <img src="./.github/demo.gif" alt="Downloading with Mediakit" width="650px">
+</p>
+
 ## Features
 
 - Quickly download YouTube videos with a single command on your terminal
