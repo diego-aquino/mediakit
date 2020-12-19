@@ -56,7 +56,8 @@
   <a href="#features">Features</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#installation">Installation</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#how-to-use">How to use</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#api-reference">API Reference</a>
+  <a href="#api-reference">API Reference</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <a href="#development-experiences">Development experiences</a>
 </p>
 
 ---
@@ -204,6 +205,12 @@ Mediakit currently supports the following command options:
 | `-b <batch_file>`, <br /> `--batch <batch_file>` | Download videos from URL's stored in a batch file | `mediakit -b urls.txt` |
 | `-nc`, `--no-colors` | Disable the colors of the interface | `mediakit https://... -nc` |
 | `-f <formats>`, <br /> `--formats <formats>` | Specify which formats you want to download | `mediakit https://... -f audio` |
+
+---
+
+## Development experiences
+
+All experiences and learning acquired during the development of Mediakit are detailed in [Development experiences and learning](/docs/experiences-and-learning.md). Check it out if you want to know more about what were the motivations to build this project, how it was developed and what were the main challenges and experiences.
 
 ---
 
