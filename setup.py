@@ -35,7 +35,7 @@ setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        'pytube>=10.4.1',
+        'pytube>=10.8.5',
         'clint',
         'imageio',
         'imageio-ffmpeg',
@@ -48,7 +48,7 @@ setup(
         ]
     },
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
 
         'Environment :: Console',
         'Intended Audience :: End Users/Desktop',
