@@ -94,7 +94,7 @@ class MediaResource:
 
             self.video.download(
                 output_path=self.output_path,
-                filename=f'{temp_filename}[video]',
+                filename=f'{temp_filename}[video].webm',
                 skip_existing=False
             )
         if (self.output_type == 'audio'
@@ -103,7 +103,7 @@ class MediaResource:
 
             self.audio.download(
                 output_path=self.output_path,
-                filename=f'{temp_filename}[audio]',
+                filename=f'{temp_filename}[audio].webm',
                 skip_existing=False
             )
 

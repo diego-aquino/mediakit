@@ -103,9 +103,10 @@ def download():
         except KeyboardInterrupt:
             download_cli.terminate()
             break
-        except Exception:
+        except Exception as exception:
             download_cli.remove_loading_label()
             exceptions.UnspecifiedError().show_message()
+            raise exception
         finally:
             if is_last_video:
                 download_cli.terminate()
