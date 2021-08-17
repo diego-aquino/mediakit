@@ -14,7 +14,7 @@ $(VENV)/bin/activate: setup.py requirements.txt
 	$(PIP) install -r requirements.txt
 
 install:
-	$(PIP) install . --use-feature=in-tree-build
+	$(PIP) install -e .
 
 clean: clean-build clean-pyc
 
