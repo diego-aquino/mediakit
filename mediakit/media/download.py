@@ -134,16 +134,13 @@ class MediaResource:
             self._convert_downloaded_audio()
 
     def _merge_video_with_external_audio(self):
-        downloaded_video_extension = self.video.mime_type.split('/')[-1]
-        downloaded_audio_extension = self.audio.mime_type.split('/')[-1]
-
         video_path = path.join(
             self.output_path,
-            f'{temp_filename}[video].{downloaded_video_extension}'
+            f'{temp_filename}[video].webm'
         )
         audio_path = path.join(
             self.output_path,
-            f'{temp_filename}[audio].{downloaded_audio_extension}'
+            f'{temp_filename}[audio].webm'
         )
         output_file_path = path.join(
             self.output_path,
@@ -156,10 +153,7 @@ class MediaResource:
         remove_file(audio_path)
 
     def _convert_downloaded_video(self):
-        downloaded_video_extension = self.video.mime_type.split('/')[-1]
-        downloaded_temp_filename = (
-            f'{temp_filename}[video].{downloaded_video_extension}'
-        )
+        downloaded_temp_filename = f'{temp_filename}[video].webm'
 
         downloaded_temp_file_path = path.join(
             self.output_path,
@@ -180,9 +174,8 @@ class MediaResource:
         remove_file(downloaded_temp_file_path)
 
     def _convert_downloaded_audio(self):
-        downloaded_audio_extension = self.audio.mime_type.split('/')[-1]
         downloaded_temp_filename = (
-            f'{temp_filename}[audio].{downloaded_audio_extension}'
+            f'{temp_filename}[audio].webm'
         )
 
         downloaded_temp_file_path = path.join(
