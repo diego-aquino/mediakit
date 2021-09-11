@@ -8,21 +8,20 @@ from .colors import colored, Colors
 
 
 class ANSIConsoleExpressions:
-    MOVE_CURSOR_ONE_LINE_UP = '\033[A'
-    MOVE_CURSOR_TO_BEGGINING_OF_LINE = '\033[0G'
-    CLEAR_CHARACTERS_TO_THE_RIGHT_OF_CURSOR = '\033[K'
+    MOVE_CURSOR_ONE_LINE_UP = "\033[A"
+    MOVE_CURSOR_TO_BEGGINING_OF_LINE = "\033[0G"
+    CLEAR_CHARACTERS_TO_THE_RIGHT_OF_CURSOR = "\033[K"
     CLEAR_LINE = (
-        MOVE_CURSOR_TO_BEGGINING_OF_LINE
-        + CLEAR_CHARACTERS_TO_THE_RIGHT_OF_CURSOR
+        MOVE_CURSOR_TO_BEGGINING_OF_LINE + CLEAR_CHARACTERS_TO_THE_RIGHT_OF_CURSOR
     )
 
 
 class ContentCategories:
-    NORMAL = 'NORMAL'
-    INFO = 'INFO'
-    WARNING = 'WARNING'
-    ERROR = 'ERROR'
-    USER_INPUT = 'USER_INPUT'
+    NORMAL = "NORMAL"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    USER_INPUT = "USER_INPUT"
 
 
 class Content:
@@ -30,29 +29,30 @@ class Content:
         self.index_on_screen = index_on_screen
 
         if category == ContentCategories.NORMAL:
-            self.category_label = ''
+            self.category_label = ""
         elif category == ContentCategories.INFO:
-            self.category_label = colored('info ', fore=Colors.fore.BLUE)
+            self.category_label = colored("info ", fore=Colors.fore.BLUE)
         elif category == ContentCategories.WARNING:
-            self.category_label = colored('warning ', fore=Colors.fore.YELLOW)
+            self.category_label = colored("warning ", fore=Colors.fore.YELLOW)
         elif category == ContentCategories.ERROR:
-            self.category_label = colored('error ', fore=Colors.fore.RED)
+            self.category_label = colored("error ", fore=Colors.fore.RED)
         elif category == ContentCategories.USER_INPUT:
-            self.category_label = colored('? ', fore=Colors.fore.BLUE)
+            self.category_label = colored("? ", fore=Colors.fore.BLUE)
 
         self.update_inner_text(text)
 
     def update_inner_text(self, new_text):
-        new_text_stripped_of_leading_newlines = new_text.lstrip('\n')
-        number_of_leading_newlines = (
-            len(new_text) - len(new_text_stripped_of_leading_newlines)
+        new_text_stripped_of_leading_newlines = new_text.lstrip("\n")
+        number_of_leading_newlines = len(new_text) - len(
+            new_text_stripped_of_leading_newlines
         )
 
         self.inner_text = (
-            '\n' * number_of_leading_newlines
+            "\n" * number_of_leading_newlines
             + self.category_label
             + new_text_stripped_of_leading_newlines
         )
+
 
 class Screen:
     def __init__(self):
@@ -87,33 +87,24 @@ class Screen:
         for index in range(base_index, len(self.contents)):
             self.contents[index].index_on_screen = index
 
-        needs_to_rerender_contents = (
-            len(self.contents) > 0
-            and base_index < len(self.contents)
+        needs_to_rerender_contents = len(self.contents) > 0 and base_index < len(
+            self.contents
         )
 
         if needs_to_rerender_contents:
             self._render_contents_starting_at(self.contents[base_index])
 
     def clear_lines(self, number_of_lines_to_clear):
-        clear_expression = (
-            ANSIConsoleExpressions.MOVE_CURSOR_ONE_LINE_UP.join(
-                [ANSIConsoleExpressions.CLEAR_LINE] * number_of_lines_to_clear
-            )
+        clear_expression = ANSIConsoleExpressions.MOVE_CURSOR_ONE_LINE_UP.join(
+            [ANSIConsoleExpressions.CLEAR_LINE] * number_of_lines_to_clear
         )
 
-        print(clear_expression, end='', file=sys.stderr)
+        print(clear_expression, end="", file=sys.stderr)
 
     def get_console_width(self):
         return console_width({})
 
-    def prompt(
-        self,
-        message,
-        valid_inputs=[],
-        invalid_inputs=[],
-        case_sensitive=False
-    ):
+    def prompt(self, message, valid_inputs=[], invalid_inputs=[], case_sensitive=False):
         if not case_sensitive:
             for i in range(len(valid_inputs)):
                 valid_inputs[i] = valid_inputs[i].lower()
@@ -122,8 +113,7 @@ class Screen:
         invalid_inputs = set(invalid_inputs)
 
         self.prompt_message = self.append_content(
-            message,
-            category=ContentCategories.USER_INPUT
+            message, category=ContentCategories.USER_INPUT
         )
 
         while True:
@@ -133,9 +123,8 @@ class Screen:
                 entry = entry.lower()
 
             valid_entry = (
-                (entry in valid_inputs if len(valid_inputs) > 0 else True)
-                and entry not in invalid_inputs
-            )
+                entry in valid_inputs if len(valid_inputs) > 0 else True
+            ) and entry not in invalid_inputs
 
             if valid_entry:
                 return entry, self.prompt_message
@@ -143,26 +132,25 @@ class Screen:
             self.erase_prompt_entry(self.prompt_message)
 
     def erase_prompt_entry(self, prompt):
-        lines_occupied_by_entry = 2 # <entry>\n<empty line> -> 2 lines to clear
+        lines_occupied_by_entry = 2  # <entry>\n<empty line> -> 2 lines to clear
         self.clear_lines(lines_occupied_by_entry)
 
         self._clear_lines_starting_at(prompt)
         self._render_contents_starting_at(prompt)
 
     def _render_content(self, content):
-        print(content.inner_text, end='', file=sys.stderr)
+        print(content.inner_text, end="", file=sys.stderr)
 
     def _clear_lines_starting_at(self, content):
         current_console_width = self.get_console_width()
 
         texts_to_clear = map(
             lambda content_to_clear: content_to_clear.inner_text,
-            self.contents[content.index_on_screen:]
+            self.contents[content.index_on_screen :],
         )
 
         lines_to_clear = self._count_lines_occupied_by(
-            ''.join(texts_to_clear),
-            current_console_width
+            "".join(texts_to_clear), current_console_width
         )
 
         self.clear_lines(lines_to_clear)
@@ -172,17 +160,15 @@ class Screen:
             self._render_content(self.contents[i])
 
     def _count_lines_occupied_by(self, text, current_console_width):
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         lines_occupied = 0
         for i in range(len(lines)):
             line = lines[i]
 
-            lines_occupied += max(
-                ceil(len_ansi_safe(line) / current_console_width),
-                1
-            )
+            lines_occupied += max(ceil(len_ansi_safe(line) / current_console_width), 1)
 
         return lines_occupied
+
 
 screen = Screen()

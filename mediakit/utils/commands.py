@@ -4,13 +4,9 @@ import subprocess
 
 
 def run_command_in_background(command):
-    with open(devnull, 'w') as DEVNULL:
+    with open(devnull, "w") as DEVNULL:
         subprocess.run(
-            command,
-            shell=True,
-            stdout=DEVNULL,
-            stderr=subprocess.STDOUT,
-            check=True
+            command, shell=True, stdout=DEVNULL, stderr=subprocess.STDOUT, check=True
         )
 
 

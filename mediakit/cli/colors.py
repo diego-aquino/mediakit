@@ -3,13 +3,13 @@ import colorama
 from mediakit.globals import global_config
 
 
-class Colors():
+class Colors:
     fore = colorama.Fore
     back = colorama.Back
     style = colorama.Style
 
 
-class ColoredText():
+class ColoredText:
     def __init__(self, text, fore, back, style):
         self.text = text
         self.fore = fore
@@ -18,9 +18,9 @@ class ColoredText():
 
     def __str__(self):
         return (
-            f'{self.fore}{self.back}{self.style}'
-            f'{self.text}'
-            f'{Colors.style.RESET_ALL}'
+            f"{self.fore}{self.back}{self.style}"
+            f"{self.text}"
+            f"{Colors.style.RESET_ALL}"
         )
 
 
@@ -29,12 +29,9 @@ def colored(
     fore=Colors.fore.RESET,
     back=Colors.back.RESET,
     style=Colors.style.NORMAL,
-    sep=' '
+    sep=" ",
 ):
-    joined_text = sep.join(map(
-        lambda value: str(value),
-        values
-    ))
+    joined_text = sep.join(map(lambda value: str(value), values))
 
     if global_config.ui_colors_disabled:
         return joined_text
