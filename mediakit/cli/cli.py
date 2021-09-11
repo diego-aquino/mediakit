@@ -4,8 +4,8 @@ from time import sleep
 from math import floor
 
 from mediakit.info import name, version
-from mediakit.streams.screen import screen, ContentCategories
-from mediakit.streams.colors import colored, Colors
+from mediakit.cli.screen import screen, ContentCategories
+from mediakit.cli.colors import colored, Colors
 from mediakit.media.download import MediaResource, DownloadStatusCodes
 from mediakit.utils.format import limit_text_length, parse_int
 from mediakit.constants import (

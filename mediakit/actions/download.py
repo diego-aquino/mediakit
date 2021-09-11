@@ -3,13 +3,9 @@ from os import path
 from pytube import YouTube
 from pytube.exceptions import RegexMatchError as PytubeRegexMatchError
 
-from mediakit.streams.arguments import command_args
-from mediakit.streams.cli import DownloadCLI
-from mediakit.utils.files import (
-    get_filename_from,
-    read_video_urls_from,
-    file_exists
-)
+from mediakit.cli.arguments import command_args
+from mediakit.cli.cli import DownloadCLI
+from mediakit.utils.files import get_filename_from, read_video_urls_from, file_exists
 from mediakit.constants import FFMPEG_BINARY
 from mediakit.globals import global_config
 from mediakit import exceptions
@@ -25,9 +21,7 @@ def _get_video_urls_to_download(arguments):
         video_urls_to_download = read_video_urls_from(global_config.batch_file)
 
         if len(video_urls_to_download) == 0:
-            raise exceptions.NoVideoURLsInBatchFile(
-                global_config.batch_file
-            )
+            raise exceptions.NoVideoURLsInBatchFile(global_config.batch_file)
 
         return video_urls_to_download
 
@@ -36,17 +30,14 @@ def _get_video_urls_to_download(arguments):
 
 
 def download():
-    def on_download_progress(stream, chunk, bytes_remaining):
+    def on_download_progress(_stream, _chunk, bytes_remaining):
         download_cli.update_download_progress_info(bytes_remaining)
 
     arguments = command_args.parse_download_arguments()
 
     try:
         video_urls_to_download = _get_video_urls_to_download(arguments)
-    except (
-        exceptions.NoSuchFile,
-        exceptions.NoVideoURLsInBatchFile
-    ) as exception:
+    except (exceptions.NoSuchFile, exceptions.NoVideoURLsInBatchFile) as exception:
         exception.show_message()
         return
 
@@ -72,12 +63,7 @@ def download():
             download_cli.show_loading_label()
 
             video = YouTube(video_url)
-            download_cli.register_download_info(
-                video,
-                output_path,
-                filename,
-                formats
-            )
+            download_cli.register_download_info(video, output_path, filename, formats)
             download_cli.show_video_heading()
             download_cli.show_download_summary()
 
