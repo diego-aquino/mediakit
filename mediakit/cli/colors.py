@@ -26,9 +26,9 @@ class ColoredText:
 
 def colored(
     *values,
-    fore=Colors.fore.RESET,
-    back=Colors.back.RESET,
-    style=Colors.style.NORMAL,
+    fore: str = Colors.fore.RESET,
+    back: str = Colors.back.RESET,
+    style: str = Colors.style.NORMAL,
     sep=" ",
 ):
     joined_text = sep.join(map(lambda value: str(value), values))
