@@ -1,109 +1,96 @@
-from mediakit.streams.screen import screen, ContentCategories
-from mediakit.streams.colors import colored, Colors
+from mediakit.cli.screen import screen, ContentCategories
+from mediakit.cli.colors import colored, Colors
 
 
 class MediakitException(Exception):
+    def __init__(self, message, category):
+        self.message = message
+        self.category = category
+
     def show_message(self):
         screen.append_content(self.message, self.category)
 
 
 class CommandUnavailable(MediakitException):
     def __init__(self, command):
-        self.message = (
-            f"Command '{command}' is not available.\n\n"
-        )
-        self.category = ContentCategories.ERROR
+        message = f"Command '{command}' is not available.\n\n"
+        category = ContentCategories.ERROR
 
-        super().__init__(self.message)
+        super().__init__(message, category)
 
 
 class FFMPEGNotAvailable(MediakitException):
     def __init__(self):
-        self.message = (
-            'FFmpeg is a required package for Mediakit, '
+        message = (
+            "FFmpeg is a required package for Mediakit, "
             "but it doesn't appear to be installed.\n"
-            'You can install FFmpeg at https://ffmpeg.org/download.html.\n\n'
+            "You can install FFmpeg at https://ffmpeg.org/download.html.\n\n"
         )
-        self.category = ContentCategories.WARNING
+        category = ContentCategories.WARNING
 
-        super().__init__(self.message)
+        super().__init__(message, category)
 
 
 class InvalidVideoURLError(MediakitException):
     def __init__(self):
-        self.message = (
-            'Could not recognize the provided URL. Please, try again.\n\n'
-        )
-        self.category = ContentCategories.ERROR
+        message = "Could not recognize the provided URL. Please, try again.\n\n"
+        category = ContentCategories.ERROR
 
-        super().__init__(self.message)
+        super().__init__(message, category)
 
 
 class UnspecifiedError(MediakitException):
     def __init__(self):
-        self.message = 'Something went wrong. :(\nPlease, try again.\n\n'
-        self.category = ContentCategories.ERROR
+        message = "Something went wrong. :(\nPlease, try again.\n\n"
+        category = ContentCategories.ERROR
 
-        super().__init__(self.message)
+        super().__init__(message, category)
 
 
 class NoAvailableSpecifiedFormats(MediakitException):
     def __init__(self, available_formats):
-        self.message = (
-            'None of the specified formats were found.\n'
-            + 'Please, verify your entries and try again.\n\n'
-
-            + 'The formats available for this video are:\n'
+        message = (
+            "None of the specified formats were found.\n"
+            + "Please, verify your entries and try again.\n\n"
+            + "The formats available for this video are:\n"
+            + colored("   (video) ", style=Colors.style.DIM + Colors.style.BRIGHT)
             + colored(
-                '   (video) ',
-                style=Colors.style.DIM + Colors.style.BRIGHT
-            )
-            + colored(
-                ' '.join(available_formats['video']),
+                " ".join(available_formats["video"]),
                 fore=Colors.fore.BLUE,
-                style=Colors.style.BRIGHT
+                style=Colors.style.BRIGHT,
             )
+            + colored("\n   (audio) ", style=Colors.style.DIM + Colors.style.BRIGHT)
             + colored(
-                '\n   (audio) ',
-                style=Colors.style.DIM + Colors.style.BRIGHT
-            )
-            + colored(
-                ' '.join(available_formats['audio']),
+                " ".join(available_formats["audio"]),
                 fore=Colors.fore.BLUE,
-                style=Colors.style.BRIGHT
+                style=Colors.style.BRIGHT,
             )
-            + '\n\n'
+            + "\n\n"
         )
-        self.category = ContentCategories.ERROR
+        category = ContentCategories.ERROR
 
-        super().__init__(self.message)
+        super().__init__(message, category)
 
 
 class NoSuchFile(MediakitException):
     def __init__(self, supposed_file):
-        self.message = (
-            '\nNo such file: '
-            + colored(
-                supposed_file,
-                fore=Colors.fore.MAGENTA
-            )
-            + '\n\n'
+        message = (
+            "\nNo such file: "
+            + colored(supposed_file, fore=Colors.fore.MAGENTA)
+            + "\n\n"
         )
-        self.category = ContentCategories.ERROR
+        category = ContentCategories.ERROR
 
-        super().__init__(self.message)
+        super().__init__(message, category)
 
 
 class NoVideoURLsInBatchFile(MediakitException):
     def __init__(self, batch_file):
-        self.message = (
-            '\nCould not find any valid video URLs in '
-            + colored(
-                batch_file,
-                fore=Colors.fore.MAGENTA
-            )
-            + '\nPlease check your entries and try again.\n\n'
+        message = (
+            "\nCould not find any valid video URLs in "
+            + colored(batch_file, fore=Colors.fore.MAGENTA)
+            + "\nPlease check your entries and try again.\n\n"
         )
-        self.category = ContentCategories.ERROR
+        category = ContentCategories.ERROR
 
-        super().__init__(self.message)
+        super().__init__(message, category)
