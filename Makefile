@@ -16,7 +16,7 @@ $(VENV)/bin/activate: setup.py requirements.txt
 install:
 	$(PIP) install -e .
 
-clean: clean-build clean-pyc
+clean: clean-build clean-pyc clean-media
 
 clean-build:
 	rm -rf build/
@@ -33,8 +33,8 @@ clean-pyc:
 	find . -name '__pycache__' -exec rm -rf {} +
 
 clean-media:
-	find . -name '*.mp*' -exec rm -f {} +
-	find . -name '*.webm' -exec rm -f {} +
+	find . -name '*.mp*' -not -path "./.github/*" -exec rm -f {} +
+	find . -name '*.webm' -not -path "./.github/*" -exec rm -f {} +
 
 build: clean
 	$(PYTHON) setup.py sdist bdist_wheel
