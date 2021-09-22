@@ -1,10 +1,10 @@
 import re
 
 
-ANSI_ESCAPE_CODES_REGEX = r'\x1b\[[;\d]*[A-Za-z]'
+ANSI_ESCAPE_CODES_REGEX = r"\x1b\[[;\d]*[A-Za-z]"
 
-VIDEO_ID_REGEX = r'(?:v=|\/)([0-9A-Za-z_-]{11}).*'
-YOUTUBE_URL_REGEX = r'https:\/\/.*youtu'
+VIDEO_ID_REGEX = r"(?:v=|\/)([0-9A-Za-z_-]{11}).*"
+YOUTUBE_URL_REGEX = r"https:\/\/.*youtu"
 
 
 def search(pattern, string, group):

@@ -8,4 +8,4 @@ download_url = "https://github.com/diego-aquino/mediakit/archive/v0.5.6.tar.gz"
 license = "GPL-3.0"
 copyright = "Copyright 2021 Diego Aquino"
 
-temp_filename = ".mediakit_download"
+temporary_filename = ".mediakit_download"

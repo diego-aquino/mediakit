@@ -3,12 +3,13 @@ from os import path
 from pytube import YouTube
 from pytube.exceptions import RegexMatchError as PytubeRegexMatchError
 
-from mediakit.streams.arguments import command_args
-from mediakit.streams.cli import DownloadCLI
+from mediakit.cli.arguments import command_args
+from mediakit.cli.download import DownloadCLI
 from mediakit.utils.files import (
     get_filename_from,
     read_video_urls_from,
-    file_exists
+    file_exists,
+    remove_all_temporary_files,
 )
 from mediakit.constants import FFMPEG_BINARY
 from mediakit.globals import global_config
@@ -21,32 +22,23 @@ def _get_video_urls_to_download(arguments):
     if not was_batch_file_provided:
         return [arguments.video_url]
 
-    if file_exists(global_config.batch_file):
-        video_urls_to_download = read_video_urls_from(global_config.batch_file)
-
-        if len(video_urls_to_download) == 0:
-            raise exceptions.NoVideoURLsInBatchFile(
-                global_config.batch_file
-            )
-
-        return video_urls_to_download
-
-    else:
+    if not file_exists(global_config.batch_file):
         raise exceptions.NoSuchFile(global_config.batch_file)
+
+    video_urls_to_download = read_video_urls_from(global_config.batch_file)
+
+    if len(video_urls_to_download) == 0:
+        raise exceptions.NoVideoURLsInBatchFile(global_config.batch_file)
+
+    return video_urls_to_download
 
 
 def download():
-    def on_download_progress(stream, chunk, bytes_remaining):
-        download_cli.update_download_progress_info(bytes_remaining)
-
     arguments = command_args.parse_download_arguments()
 
     try:
         video_urls_to_download = _get_video_urls_to_download(arguments)
-    except (
-        exceptions.NoSuchFile,
-        exceptions.NoVideoURLsInBatchFile
-    ) as exception:
+    except (exceptions.NoSuchFile, exceptions.NoVideoURLsInBatchFile) as exception:
         exception.show_message()
         return
 
@@ -69,24 +61,19 @@ def download():
         is_last_video = video_url_index == len(video_urls_to_download) - 1
 
         try:
-            download_cli.show_loading_label()
+            download_cli.mark_as_loading(True)
 
             video = YouTube(video_url)
-            download_cli.register_download_info(
-                video,
-                output_path,
-                filename,
-                formats
-            )
+            download_cli.register_download_info(video, output_path, filename, formats)
+            download_cli.mark_as_loading(False)
+
             download_cli.show_video_heading()
             download_cli.show_download_summary()
 
             if not global_config.answer_yes_to_all_questions:
-                confirmed = download_cli.ask_for_confirmation_to_download()
-                if not confirmed:
+                user_has_confirmed = download_cli.ask_for_confirmation_to_download()
+                if not user_has_confirmed:
                     continue
-
-            video.register_on_progress_callback(on_download_progress)
 
             download_cli.download_selected_formats()
 
@@ -98,16 +85,18 @@ def download():
         except exceptions.NoAvailableSpecifiedFormats as exception:
             exception.show_message()
         except PytubeRegexMatchError:
-            download_cli.remove_loading_label()
+            download_cli.mark_as_loading(False)
             exceptions.InvalidVideoURLError().show_message()
         except KeyboardInterrupt:
             download_cli.terminate()
             break
         except Exception as exception:
-            download_cli.remove_loading_label()
+            download_cli.mark_as_loading(False)
             exceptions.UnspecifiedError().show_message()
             raise exception
         finally:
+            remove_all_temporary_files(output_path)
+
             if is_last_video:
                 download_cli.terminate()
             else:
