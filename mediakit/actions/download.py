@@ -5,7 +5,12 @@ from pytube.exceptions import RegexMatchError as PytubeRegexMatchError
 
 from mediakit.cli.arguments import command_args
 from mediakit.cli.download import DownloadCLI
-from mediakit.utils.files import get_filename_from, read_video_urls_from, file_exists
+from mediakit.utils.files import (
+    get_filename_from,
+    read_video_urls_from,
+    file_exists,
+    remove_all_temporary_files,
+)
 from mediakit.constants import FFMPEG_BINARY
 from mediakit.globals import global_config
 from mediakit import exceptions
@@ -90,6 +95,8 @@ def download():
             exceptions.UnspecifiedError().show_message()
             raise exception
         finally:
+            remove_all_temporary_files(output_path)
+
             if is_last_video:
                 download_cli.terminate()
             else:
