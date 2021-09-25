@@ -215,6 +215,9 @@ class DownloadCLIFormatter:
 
         current_download_progress = heading + "\n"
 
+        if download_status in DownloadStatusCodes.CONVERTING:
+            return current_download_progress + "\n"
+
         if download_status == DownloadStatusCodes.DONE:
             return current_download_progress
 
