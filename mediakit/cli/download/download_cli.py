@@ -1,17 +1,20 @@
 from os import path
+from functools import partial
 from threading import Thread
 from time import sleep
+from typing import Callable
 from pytube import YouTube
 
 from mediakit.cli.screen import screen, ContentCategories
 from mediakit.cli.colors import colored, Colors
-from mediakit.media.download import MediaResource
+from mediakit.media.download import DownloadStatusCodes, MediaResource
 from mediakit.utils.format import limit_text_length, parse_int
 from mediakit.cli.loadble_cli import LoadableCLI
 from mediakit.cli.download.download_cli_formatter import DownloadCLIFormatter
 from mediakit.cli.download.download_cli_store import DownloadCLIStore
 from mediakit.constants import (
     DOWNLOAD_FORMATS,
+    FFMPEG_BINARY,
     VIDEO_DEFINITIONS,
     VIDEO_DEFINITIONS_ALIASES,
     AUDIO_DEFINITIONS,
@@ -22,127 +25,311 @@ from mediakit import exceptions
 
 
 class DownloadCLI(LoadableCLI):
-    def __init__(self):
-        super().__init__(DownloadCLIStore())
+    def __init__(self, output_path: str, filename: str):
+        self.store = DownloadCLIStore()
+        self.store.filename = filename
+        self.store.output_path = output_path
+
         self.formatter = DownloadCLIFormatter(self.store)
 
-    def start(self, video_urls_to_download: "list[str]"):
+    def start(self, video_urls_to_download: "list[str]", formats):
         self._show_header(video_urls_to_download)
 
-    def register_download_info(
-        self, video: YouTube, output_path: str, filename: str, formats: "list[str]"
-    ):
-        self.store.video = video
-        self.store.video.register_on_progress_callback(self.handle_download_progress)
+        if not FFMPEG_BINARY:
+            exceptions.FFMPEGNotAvailable().show_message()
+            return
 
-        self.store.output_path = output_path
-        self.store.filename = filename
+        self.mark_as_loading(True, len(video_urls_to_download))
+        self._register_videos_to_download(video_urls_to_download, formats)
+        self.mark_as_loading(False)
 
-        self.store.available_formats = self._get_available_formats()
-        self.store.media_resources_to_download = self._get_media_resources_to_download(
-            formats
+    def mark_as_loading(self, is_loading: bool, number_of_videos_being_loaded=1):
+        self.store.is_loading = is_loading
+
+        if is_loading:
+            loading_label = (
+                "Loading videos (this might take a while)"
+                if number_of_videos_being_loaded > 1
+                else "Loading video"
+            )
+            self._show_loading_label(loading_label)
+        else:
+            self._remove_loading_label()
+
+    def _show_header(self, video_urls_to_download):
+        screen.append_content(self.formatter.format_header())
+
+        if global_config.batch_file:
+            self._show_batch_file_info(video_urls_to_download)
+
+    def _register_videos_to_download(self, video_urls: str, formats: "list[str]"):
+        self.store.prepare_store(len(video_urls))
+
+        for video_index in range(len(video_urls)):
+            video = YouTube(video_urls[video_index])
+            self.store.videos[video_index] = video
+
+            def handle_download_progress(video_index, _stream, _chunk, bytes_remaining):
+                self._handle_download_progress(video_index, bytes_remaining)
+
+            video.register_on_progress_callback(
+                partial(handle_download_progress, video_index)
+            )
+
+            available_formats = self._get_available_formats(video_index)
+            self.store.available_formats[video_index] = available_formats
+
+            media_resources = self._get_media_resources_to_download(
+                video_index, formats
+            )
+            self.store.media_resources_to_download[video_index] = media_resources
+
+    def _get_available_formats(self, video_index: int):
+        video_streams = self.store.videos[video_index].streams.filter(type="video")
+        audio_streams = self.store.videos[video_index].streams.filter(type="audio")
+
+        available_formats = {
+            "video": set(),
+            "audio": set(),
+        }
+        for stream in video_streams:
+            if stream.resolution is not None:
+                available_formats["video"].add(stream.resolution)
+        for stream in audio_streams:
+            available_formats["audio"].add(stream.abr)
+
+        available_formats_sorted_by_definition = {
+            "video": reversed(sorted(available_formats["video"], key=parse_int)),
+            "audio": reversed(sorted(available_formats["audio"], key=parse_int)),
+        }
+
+        return available_formats_sorted_by_definition
+
+    def download_all(self):
+        at_least_one_file_was_downloaded = False
+
+        self.store.download_UI_update_thread = Thread(
+            target=self._keep_download_progress_UI_updated
+        )
+        self.store.download_UI_update_thread.start()
+
+        video_indexes_left_to_download = list(range(len(self.store.videos) - 1, -1, -1))
+        ongoing_download_threads: "list[Thread]" = []
+
+        def download(video_index: int, on_finish: Callable[..., None]):
+            nonlocal at_least_one_file_was_downloaded
+
+            for media_resource in self.store.media_resources_to_download[video_index]:
+                self._create_download_progress(video_index, media_resource)
+
+                media_resource.download()
+
+                self._end_download_progress(video_index)
+                at_least_one_file_was_downloaded = True
+
+                on_finish()
+
+        def start_next_download():
+            if len(video_indexes_left_to_download) == 0:
+                return
+
+            video_index = video_indexes_left_to_download.pop()
+
+            self._show_download_summary(video_index)
+
+            should_ask_confirmation_to_download = (
+                not global_config.answer_yes_to_all_questions
+                and global_config.batch_file is None
+            )
+            if should_ask_confirmation_to_download:
+                user_has_confirmed = self._ask_for_confirmation_to_download(video_index)
+                if not user_has_confirmed:
+                    return
+
+            download_thread = Thread(
+                target=partial(download, video_index, start_next_download)
+            )
+            ongoing_download_threads.append(download_thread)
+            download_thread.start()
+
+        number_of_starter_videos = min(
+            global_config.max_downloads_in_parallel,
+            len(video_indexes_left_to_download),
         )
 
-        self.store.short_video_title = self.formatter.format_video_title()
+        for _ in range(number_of_starter_videos):
+            start_next_download()
 
-    def show_video_heading(self):
-        formatted_video_heading = self.formatter.format_video_heading()
-        self.store.video_heading = screen.append_content(formatted_video_heading)
+        for thread in ongoing_download_threads:
+            thread.join()
 
-    def show_download_summary(self):
-        if self.were_all_formats_skipped():
-            raise exceptions.NoAvailableSpecifiedFormats(self.store.available_formats)
+        if at_least_one_file_was_downloaded:
+            self._show_success_message()
 
-        if len(self.store.skipped_formats) > 0:
-            self._show_skipped_formats_warning()
+    def _show_download_summary(self, video_index: int):
+        screen.update_content(
+            self.store.video_headings[video_index],
+            self.formatter.format_video_heading(video_index),
+        )
 
-        if len(self.store.formats_replaced_by_fallback) > 0:
-            self._show_fallback_replacement_summary()
+        if self._were_all_formats_skipped(video_index):
+            raise exceptions.NoAvailableSpecifiedFormats(
+                self.store.available_formats[video_index]
+            )
 
-        formatted_title = limit_text_length(self.store.video.title, 26)
-        formatted_download_formats = self.formatter.format_download_formats()
+        if len(self.store.skipped_formats[video_index]) > 0:
+            self._show_skipped_formats_warning(video_index)
+
+        if len(self.store.formats_replaced_by_fallback[video_index]) > 0:
+            self._show_fallback_replacement_summary(video_index)
+
+        formatted_title = limit_text_length(self.store.videos[video_index].title, 26)
+        formatted_download_formats = self.formatter.format_download_formats(video_index)
 
         media_resource_sizes = map(
             lambda media_resource: media_resource.total_size,
-            self.store.media_resources_to_download,
+            self.store.media_resources_to_download[video_index],
         )
         total_download_size = sum(media_resource_sizes)
         formatted_download_size = self.formatter.format_data_size(total_download_size)
 
         is_preceded_by_format_warnings = (
-            len(self.store.skipped_formats) > 0
-            or len(self.store.formats_replaced_by_fallback) > 0
+            len(self.store.skipped_formats[video_index]) > 0
+            or len(self.store.formats_replaced_by_fallback[video_index]) > 0
         )
 
-        self.store.ready_to_download_label = screen.append_content(
-            ("\n" if is_preceded_by_format_warnings else "")
-            + "Ready to download "
-            + colored(
-                f"{formatted_title} ", fore=Colors.fore.CYAN, style=Colors.style.BRIGHT
+        if global_config.batch_file is None:
+            screen.update_content(
+                self.store.ready_to_download_labels[video_index],
+                ("\n" if is_preceded_by_format_warnings else "")
+                + "Ready to download "
+                + colored(
+                    f"{formatted_title} ",
+                    fore=Colors.fore.CYAN,
+                    style=Colors.style.BRIGHT,
+                )
+                + colored(
+                    f"{formatted_download_formats}\n",
+                    fore=Colors.fore.BLUE,
+                    style=Colors.style.BRIGHT,
+                ),
             )
-            + colored(
-                f"{formatted_download_formats}\n",
-                fore=Colors.fore.BLUE,
-                style=Colors.style.BRIGHT,
-            ),
-            ContentCategories.INFO,
-        )
-        self.store.total_download_size_label = screen.append_content(
+
+        screen.update_content(
+            self.store.total_download_size_labels[video_index],
             "Total download size: "
             + colored(f"{formatted_download_size}\n", fore=Colors.fore.YELLOW),
-            ContentCategories.INFO,
         )
 
-    def ask_for_confirmation_to_download(self):
-        prompt_message = self.formatter.format_download_confirmation_prompt_message()
+    def _show_skipped_formats_warning(self, video_index: int):
+        screen.append_content(
+            self.formatter.format_skipped_formats_warning(video_index),
+            ContentCategories.WARNING,
+        )
 
-        answer, prompt = screen.prompt(prompt_message, valid_inputs=["", "y", "n"])
-        self.store.download_confirmation_prompt = prompt
+    def _show_fallback_replacement_summary(self, video_index: int):
+        for summary in self.formatter.format_fallback_replacement_summary(video_index):
+            screen.append_content(summary, ContentCategories.WARNING)
+
+    def _ask_for_confirmation_to_download(self, video_index: int):
+        prompt = self.store.download_confirmation_prompts[video_index]
+
+        prompt_message = self.formatter.format_download_confirmation_prompt_message()
+        answer = screen.prompt(
+            prompt_message,
+            valid_inputs=["", "y", "n"],
+            index_on_screen=prompt.index_on_screen,
+        )
 
         return answer != "n"
 
-    def download_selected_formats(self):
-        for media_resource in self.store.media_resources_to_download:
-            self._create_download_progress(media_resource)
+    def _create_download_progress(
+        self, video_index: int, media_resource: MediaResource
+    ):
+        self.store.downloading_media_resources[video_index] = media_resource
+        screen.update_content(
+            self.store.download_progress_UIs[video_index],
+            self.formatter.format_current_download_progress(video_index),
+        )
 
-            screen_thread = Thread(target=self._keep_download_progress_ui_updated)
-            screen_thread.start()
+    def _keep_download_progress_UI_updated(self):
+        has_detailed_download_info_on_screen = [True for _ in self.store.videos]
 
-            media_resource.download()
+        while not self.store.is_terminated:
+            self._update_all_download_progress_UIs(has_detailed_download_info_on_screen)
+            sleep(self.store.PROGRESS_UI_UPDATE_INTERVAL)
 
-            self.end_download_progress()
+    def _update_all_download_progress_UIs(
+        self, has_detailed_download_info_on_screen: "list[bool]"
+    ):
+        for video_index in range(len(self.store.videos)):
+            media_resources = self.store.media_resources_to_download[video_index]
 
-    def handle_download_progress(self, _stream, _chunk, bytes_remaining):
-        downloading_stream = self.store.downloading_media_resource.downloading_stream
-
-        if self.store.downloading_media_resource.output_type == "videoaudio":
-            if downloading_stream is self.store.downloading_media_resource.video:
-                self.store.downloading_media_resource.video_bytes_remaining = (
-                    bytes_remaining
+            all_media_resources_are_done = all(
+                map(
+                    lambda media_resource: media_resource.download_status
+                    == DownloadStatusCodes.DONE,
+                    media_resources,
                 )
-            elif downloading_stream is self.store.downloading_media_resource.audio:
-                self.store.downloading_media_resource.audio_bytes_remaining = (
-                    bytes_remaining
-                )
-
-        if self.store.downloading_media_resource.output_type == "videoonly":
-            self.store.downloading_media_resource.video_bytes_remaining = (
-                bytes_remaining
             )
 
-        if self.store.downloading_media_resource.output_type == "audio":
-            self.store.downloading_media_resource.audio_bytes_remaining = (
-                bytes_remaining
+            should_clear_detailed_download_info = (
+                all_media_resources_are_done
+                and has_detailed_download_info_on_screen[video_index]
             )
 
-    def end_download_progress(self):
-        self._update_download_progress_ui()
+            if should_clear_detailed_download_info:
+                self._clear_detailed_download_info_from_screen(video_index)
+                has_detailed_download_info_on_screen[video_index] = False
 
-        self.store.downloading_media_resource = None
-        self.formatter.downloading_media_resource = None
-        self.store.download_progress_ui = None
+        videos_with_downloading_media_resources = [
+            video_index
+            for video_index in range(len(self.store.videos))
+            if self.store.downloading_media_resources[video_index] is not None
+        ]
 
-    def show_success_message(self):
+        for video_index in videos_with_downloading_media_resources:
+            self._update_download_progress_UI(video_index)
+            self._update_progress_UI_interval_if_necessary(video_index)
+
+    def _update_download_progress_UI(self, video_index: int):
+        screen.update_content(
+            self.store.download_progress_UIs[video_index],
+            self.formatter.format_current_download_progress(video_index),
+        )
+
+    def _update_progress_UI_interval_if_necessary(self, video_index: int):
+        media_resource = self.store.downloading_media_resources[video_index]
+        required_interval = self.store.UI_UPDATE_INTERVALS.get(
+            media_resource.download_status, self.store.DEFAULT_UI_UPDATE_INTERVAL
+        )
+
+        if self.store.PROGRESS_UI_UPDATE_INTERVAL != required_interval:
+            self.store.PROGRESS_UI_UPDATE_INTERVAL = required_interval
+
+    def _handle_download_progress(self, video_index: int, bytes_remaining: int):
+        media_resource = self.store.downloading_media_resources[video_index]
+        downloading_stream = media_resource.downloading_stream
+
+        if media_resource.output_type == "videoaudio":
+            if downloading_stream is media_resource.video:
+                media_resource.video_bytes_remaining = bytes_remaining
+            elif downloading_stream is media_resource.audio:
+                media_resource.audio_bytes_remaining = bytes_remaining
+
+        if media_resource.output_type == "videoonly":
+            media_resource.video_bytes_remaining = bytes_remaining
+
+        if media_resource.output_type == "audio":
+            media_resource.audio_bytes_remaining = bytes_remaining
+
+    def _end_download_progress(self, video_index: int):
+        self._update_download_progress_UI(video_index)
+
+        self.store.downloading_media_resources[video_index] = None
+        self.store.download_progress_UIs[video_index] = None
+
+    def _show_success_message(self):
         screen.append_content(
             colored("\nSuccess! ", fore=Colors.fore.GREEN)
             + "Files saved at "
@@ -152,33 +339,36 @@ class DownloadCLI(LoadableCLI):
             )
         )
 
-    def clear_detailed_download_info_from_screen(self):
-        if self.store.download_confirmation_prompt:
-            screen.erase_prompt_entry(self.store.download_confirmation_prompt)
-            screen.remove_content(self.store.download_confirmation_prompt)
-        screen.remove_content(self.store.total_download_size_label)
-        screen.remove_content(self.store.ready_to_download_label)
-        screen.remove_content(self.store.video_heading)
+    def _clear_detailed_download_info_from_screen(self, video_index: int):
+        video_heading = self.store.video_headings[video_index]
+        total_download_size_label = self.store.total_download_size_labels[video_index]
+        ready_to_download_label = self.store.ready_to_download_labels[video_index]
+        confirmation_prompt = self.store.download_confirmation_prompts[video_index]
 
-    def reset_state(self):
-        self.store.reset()
+        screen.update_content(video_heading, "")
+        screen.update_content(total_download_size_label, "")
+        screen.update_content(ready_to_download_label, "")
+
+        if not confirmation_prompt.is_empty():
+            screen.erase_prompt_entry(confirmation_prompt)
+            screen.update_content(confirmation_prompt, "")
 
     def terminate(self):
+        self._update_all_download_progress_UIs([True for _ in self.store.videos])
+
+        self.store.loading_label = None
+        self.store.is_loading = False
+
         self.store.is_terminated = True
-        self.loading_label = None
-        self.is_loading = False
 
-    def were_all_formats_skipped(self):
+        if self.store.download_UI_update_thread is not None:
+            self.store.download_UI_update_thread.join()
+
+    def _were_all_formats_skipped(self, video_index: int):
         return (
-            len(self.store.media_resources_to_download) == 0
-            and len(self.store.skipped_formats) > 0
+            len(self.store.media_resources_to_download[video_index]) == 0
+            and len(self.store.skipped_formats[video_index]) > 0
         )
-
-    def _show_header(self, video_urls_to_download):
-        screen.append_content(self.formatter.format_header())
-
-        if global_config.batch_file:
-            self._show_batch_file_info(video_urls_to_download)
 
     def _show_batch_file_info(self, valid_video_urls_in_batch_file):
         batch_filename = path.basename(global_config.batch_file)
@@ -192,10 +382,10 @@ class DownloadCLI(LoadableCLI):
             ContentCategories.INFO,
         )
 
-    def _get_media_resources_to_download(self, formats):
+    def _get_media_resources_to_download(self, video_index: int, formats):
         if len(formats) == 0:
             default_media_resource = MediaResource(
-                self.store.video,
+                self.store.videos[video_index],
                 "videoaudio",
                 output_path=self.store.output_path,
                 filename=self.store.filename,
@@ -207,7 +397,9 @@ class DownloadCLI(LoadableCLI):
         resources_registered_to_download = set()
 
         lowecased_formats = [selected_format.lower() for selected_format in formats]
-        grouped_formats = self._group_and_validate_formats(lowecased_formats)
+        grouped_formats = self._group_and_validate_formats(
+            video_index, lowecased_formats
+        )
 
         definitions_count = {}
         for group in grouped_formats:
@@ -222,15 +414,17 @@ class DownloadCLI(LoadableCLI):
             should_append_format_to_filename = definitions_count[download_format] > 1
 
             available_definition = self._get_available_definition(
-                download_format, definition
+                video_index, download_format, definition
             )
 
             if available_definition is None:
-                self.store.skipped_formats.append([download_format, definition])
+                self.store.skipped_formats[video_index].append(
+                    [download_format, definition]
+                )
                 continue
 
             if available_definition != definition:
-                self.store.formats_replaced_by_fallback.append(
+                self.store.formats_replaced_by_fallback[video_index].append(
                     {
                         "base": {"format": download_format, "definition": definition},
                         "fallback": {
@@ -258,7 +452,7 @@ class DownloadCLI(LoadableCLI):
                 filename_suffix = ""
 
             media_resource = MediaResource(
-                self.store.video,
+                self.store.videos[video_index],
                 download_format,
                 output_path=self.store.output_path,
                 definition=available_definition,
@@ -273,7 +467,7 @@ class DownloadCLI(LoadableCLI):
 
         return media_resources_to_download
 
-    def _group_and_validate_formats(self, formats):
+    def _group_and_validate_formats(self, video_index: int, formats):
         grouped_formats = []
 
         format_index = 0
@@ -299,7 +493,9 @@ class DownloadCLI(LoadableCLI):
                         {"format": current_item, "definition": "max"}
                     )
                 else:
-                    self.store.skipped_formats.append([current_item, next_item])
+                    self.store.skipped_formats[video_index].append(
+                        [current_item, next_item]
+                    )
                     format_index += 1
 
             elif is_current_item_a_definition:
@@ -308,13 +504,13 @@ class DownloadCLI(LoadableCLI):
                 )
 
             else:
-                self.store.skipped_formats.append([current_item])
+                self.store.skipped_formats[video_index].append([current_item])
 
             format_index += 1
 
         return grouped_formats
 
-    def _get_available_definition(self, base_format, base_definition):
+    def _get_available_definition(self, video_index, base_format, base_definition):
         if base_format.startswith("video"):
             is_valid_definition = (
                 base_definition in VIDEO_DEFINITIONS
@@ -328,7 +524,9 @@ class DownloadCLI(LoadableCLI):
 
         possible_definition = base_definition
         while possible_definition is not None:
-            if self._is_definition_available(base_format, possible_definition):
+            if self._is_definition_available(
+                video_index, base_format, possible_definition
+            ):
                 return possible_definition
 
             possible_definition = VIDEO_DEFINITIONS_ALIASES.get(
@@ -343,88 +541,31 @@ class DownloadCLI(LoadableCLI):
 
         return None
 
-    def _is_definition_available(self, base_format, definition):
+    def _is_definition_available(
+        self, video_index: int, base_format: str, definition: str
+    ):
+        video = self.store.videos[video_index]
+
         if base_format.startswith("video"):
             final_definition = VIDEO_DEFINITIONS_ALIASES.get(definition, definition)
 
             if final_definition == "max":
-                video_streams = self.store.video.streams.filter(type="video")
-
+                video_streams = self.store.videos[video_index].streams.filter(
+                    type="video"
+                )
                 return len(video_streams) > 0
 
-            video_streams_with_specified_resolution = self.store.video.streams.filter(
+            video_streams_with_specified_resolution = video.streams.filter(
                 type="video", resolution=final_definition
             )
-
             return len(video_streams_with_specified_resolution) > 0
 
         else:
             if definition == "max":
-                audio_streams = self.store.video.streams.filter(type="audio")
-
+                audio_streams = video.streams.filter(type="audio")
                 return len(audio_streams) > 0
 
-            audio_streams_with_specified_resolution = self.store.video.streams.filter(
+            audio_streams_with_specified_resolution = video.streams.filter(
                 type="audio", abr=definition
             )
-
             return len(audio_streams_with_specified_resolution) > 0
-
-    def _create_download_progress(self, media_resource):
-        self.store.downloading_media_resource = media_resource
-        self.formatter.downloading_media_resource = media_resource
-        self.store.download_progress_ui = screen.append_content(
-            self.formatter.format_current_download_progress()
-        )
-
-    def _keep_download_progress_ui_updated(self):
-        while self.store.downloading_media_resource and not self.store.is_terminated:
-            self._update_download_progress_ui()
-            self._update_progress_ui_interval_if_necessary()
-
-            sleep(self.store.PROGRESS_UI_UPDATE_INTERVAL)
-
-    def _update_download_progress_ui(self):
-        screen.update_content(
-            self.store.download_progress_ui,
-            self.formatter.format_current_download_progress(),
-        )
-
-    def _update_progress_ui_interval_if_necessary(self):
-        download_status = self.store.downloading_media_resource.download_status
-        required_interval = self.store.UI_UPDATE_INTERVALS.get(
-            download_status, self.store.DEFAULT_UI_UPDATE_INTERVAL
-        )
-
-        if self.store.PROGRESS_UI_UPDATE_INTERVAL != required_interval:
-            self.store.PROGRESS_UI_UPDATE_INTERVAL = required_interval
-
-    def _get_available_formats(self):
-        video_streams = self.store.video.streams.filter(type="video")
-        audio_streams = self.store.video.streams.filter(type="audio")
-
-        available_formats = {
-            "video": set(),
-            "audio": set(),
-        }
-        for stream in video_streams:
-            if stream.resolution is not None:
-                available_formats["video"].add(stream.resolution)
-        for stream in audio_streams:
-            available_formats["audio"].add(stream.abr)
-
-        available_formats_sorted_by_definition = {
-            "video": reversed(sorted(available_formats["video"], key=parse_int)),
-            "audio": reversed(sorted(available_formats["audio"], key=parse_int)),
-        }
-
-        return available_formats_sorted_by_definition
-
-    def _show_skipped_formats_warning(self):
-        screen.append_content(
-            self.formatter.format_skipped_formats_warning(), ContentCategories.WARNING
-        )
-
-    def _show_fallback_replacement_summary(self):
-        for summary in self.formatter.format_fallback_replacement_summary():
-            screen.append_content(summary, ContentCategories.WARNING)

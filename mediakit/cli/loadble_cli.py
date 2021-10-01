@@ -17,9 +17,9 @@ class LoadableCLI:
         else:
             self._remove_loading_label()
 
-    def _show_loading_label(self):
+    def _show_loading_label(self, loading_label: str = "Loading video"):
         self.store.loading_label = screen.append_content(
-            "\nLoading video.\n\n", ContentCategories.INFO
+            f"\n{loading_label}.\n\n", ContentCategories.INFO
         )
 
         def run_loading_animation():
@@ -30,7 +30,7 @@ class LoadableCLI:
 
                 screen.update_content(
                     self.store.loading_label,
-                    "\nLoading video" + "." * current_total_dots_displayed + "\n\n",
+                    f"\n{loading_label}" + "." * current_total_dots_displayed + "\n\n",
                 )
 
                 sleep(0.4)

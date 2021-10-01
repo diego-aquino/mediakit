@@ -14,6 +14,7 @@ class GlobalArguments:
     version = ["-v", "--version"]
     no_colors = ["-nc", "--no-colors"]
     batch = ["-b", "--batch"]
+    max_downloads_in_parallel = ["-p", "--parallel"]
 
 
 class Parser(ArgumentParser):
@@ -42,6 +43,13 @@ class Parser(ArgumentParser):
             nargs=1,
             help="Download videos from URLs stored in a batch file",
         )
+        self.add_argument(
+            *GlobalArguments.max_downloads_in_parallel,
+            dest="max_downloads_in_parallel",
+            type=int,
+            default=global_config.max_downloads_in_parallel,
+            help="Set a limit to downloads in parallel",
+        )
 
     def add_download_arguments(self):
         if not global_config.batch_file:
@@ -62,21 +70,21 @@ class Parser(ArgumentParser):
 
 
 def update_global_config_based_on_arguments(arguments):
-    answer_yes_to_all_questions = getattr(
+    global_config.answer_yes_to_all_questions = getattr(
         arguments, "yes", global_config.answer_yes_to_all_questions
     )
-    ui_colors_disabled = getattr(
+
+    global_config.ui_colors_disabled = getattr(
         arguments, "no_colors", global_config.ui_colors_disabled
     )
+
     batch_file = getattr(arguments, "batch", global_config.batch_file)
-
-    global_config.answer_yes_to_all_questions = answer_yes_to_all_questions
-    global_config.ui_colors_disabled = ui_colors_disabled
-
     was_batch_file_provided = isinstance(batch_file, list) and len(batch_file) == 1
     global_config.batch_file = (
         batch_file[0] if was_batch_file_provided else global_config.batch_file
     )
+
+    global_config.max_downloads_in_parallel = arguments.max_downloads_in_parallel
 
 
 class CommandArgs:

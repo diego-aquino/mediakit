@@ -1,6 +1,7 @@
 from os import path
+import uuid
 
-from mediakit.info import temporary_filename
+from mediakit import info
 from mediakit.media.convert import (
     merge_video_and_audio,
     convert_media,
@@ -84,6 +85,14 @@ class MediaResource:
         self.download_status = DownloadStatusCodes.READY
         self.downloading_stream = None
 
+        unique_resource_id = uuid.uuid4()
+        self.temporary_video_filename = (
+            f"{info.temporary_filename}-{unique_resource_id}[video].webm"
+        )
+        self.temporary_audio_filename = (
+            f"{info.temporary_filename}-{unique_resource_id}[audio].webm"
+        )
+
     def download(self):
         self.download_status = DownloadStatusCodes.DOWNLOADING
 
@@ -92,7 +101,7 @@ class MediaResource:
 
             self.video.download(
                 output_path=self.output_path,
-                filename=f"{temporary_filename}[video].webm",
+                filename=self.temporary_video_filename,
                 skip_existing=False,
             )
         if self.output_type == "audio" or (
@@ -102,7 +111,7 @@ class MediaResource:
 
             self.audio.download(
                 output_path=self.output_path,
-                filename=f"{temporary_filename}[audio].webm",
+                filename=self.temporary_audio_filename,
                 skip_existing=False,
             )
 
@@ -133,8 +142,8 @@ class MediaResource:
             self._convert_downloaded_audio()
 
     def _merge_video_with_external_audio(self):
-        video_path = path.join(self.output_path, f"{temporary_filename}[video].webm")
-        audio_path = path.join(self.output_path, f"{temporary_filename}[audio].webm")
+        video_path = path.join(self.output_path, self.temporary_video_filename)
+        audio_path = path.join(self.output_path, self.temporary_audio_filename)
         output_file_path = path.join(self.output_path, self.filename)
 
         merge_video_and_audio(video_path, audio_path, output_file_path)
@@ -143,10 +152,8 @@ class MediaResource:
         remove_file(audio_path)
 
     def _convert_downloaded_video(self):
-        downloaded_temp_filename = f"{temporary_filename}[video].webm"
-
         downloaded_temp_file_path = path.join(
-            self.output_path, downloaded_temp_filename
+            self.output_path, self.temporary_video_filename
         )
         output_file_path = path.join(self.output_path, self.filename)
 
@@ -160,7 +167,7 @@ class MediaResource:
         remove_file(downloaded_temp_file_path)
 
     def _convert_downloaded_audio(self):
-        downloaded_temp_filename = f"{temporary_filename}[audio].webm"
+        downloaded_temp_filename = self.temporary_audio_filename
 
         downloaded_temp_file_path = path.join(
             self.output_path, downloaded_temp_filename

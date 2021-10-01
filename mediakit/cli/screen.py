@@ -27,7 +27,18 @@ class ContentCategories:
 class Content:
     def __init__(self, index_on_screen, text, category):
         self.index_on_screen = index_on_screen
+        self.update(text, category)
 
+    def is_empty(self):
+        return self.inner_text == ""
+
+    def update(self, text: str = None, category: str = None):
+        if category is not None:
+            self._update_category(category)
+        if text is not None:
+            self._update_inner_text(text)
+
+    def _update_category(self, category: str):
         if category == ContentCategories.NORMAL:
             self.category_label = ""
         elif category == ContentCategories.INFO:
@@ -39,11 +50,13 @@ class Content:
         elif category == ContentCategories.USER_INPUT:
             self.category_label = colored("? ", fore=Colors.fore.BLUE)
 
-        self.update_inner_text(text)
+    def _update_inner_text(self, text):
+        if len(text) == 0:
+            self.inner_text = ""
+            return
 
-    def update_inner_text(self, new_text):
-        new_text_stripped_of_leading_newlines = new_text.lstrip("\n")
-        number_of_leading_newlines = len(new_text) - len(
+        new_text_stripped_of_leading_newlines = text.lstrip("\n")
+        number_of_leading_newlines = len(text) - len(
             new_text_stripped_of_leading_newlines
         )
 
@@ -69,11 +82,14 @@ class Screen:
 
         return new_content
 
-    def update_content(self, content, new_content_text):
+    def update_content(
+        self,
+        content: Content,
+        new_content_text: str,
+        new_category: ContentCategories = None,
+    ):
         self._clear_lines_starting_at(content)
-
-        content.update_inner_text(new_content_text)
-
+        content.update(new_content_text, new_category)
         self._render_contents_starting_at(content)
 
     def remove_content(self, content):
@@ -82,52 +98,59 @@ class Screen:
         self._clear_lines_starting_at(content)
         self.contents.pop(index_to_remove_at)
 
-        base_index = index_to_remove_at
-
-        for index in range(base_index, len(self.contents)):
+        for index in range(index_to_remove_at, len(self.contents)):
             self.contents[index].index_on_screen = index
 
-        needs_to_rerender_contents = len(self.contents) > 0 and base_index < len(
+        needs_to_rerender_contents = len(
             self.contents
-        )
+        ) > 0 and index_to_remove_at < len(self.contents)
 
         if needs_to_rerender_contents:
-            self._render_contents_starting_at(self.contents[base_index])
+            self._render_contents_starting_at(self.contents[index_to_remove_at])
 
     def clear_lines(self, number_of_lines_to_clear):
         clear_expression = ANSIConsoleExpressions.MOVE_CURSOR_ONE_LINE_UP.join(
             [ANSIConsoleExpressions.CLEAR_LINE] * number_of_lines_to_clear
         )
 
-        print(clear_expression, end="", file=sys.stderr)
+        print(clear_expression, end="", file=sys.stdout)
 
     def get_console_width(self):
         return console_width({})
 
-    def prompt(self, message, valid_inputs=[], invalid_inputs=[], case_sensitive=False):
+    def prompt(
+        self,
+        message,
+        valid_inputs=[],
+        case_sensitive=False,
+        index_on_screen=None,
+    ):
         if not case_sensitive:
-            for i in range(len(valid_inputs)):
-                valid_inputs[i] = valid_inputs[i].lower()
+            for index in range(len(valid_inputs)):
+                valid_inputs[index] = valid_inputs[index].lower()
 
         valid_inputs = set(valid_inputs)
-        invalid_inputs = set(invalid_inputs)
 
-        self.prompt_message = self.append_content(
-            message, category=ContentCategories.USER_INPUT
-        )
+        if index_on_screen is None:
+            self.prompt_message = self.append_content(
+                message, category=ContentCategories.USER_INPUT
+            )
+        else:
+            self.prompt_message = self.contents[index_on_screen]
+            self.update_content(
+                self.prompt_message, message, new_category=ContentCategories.USER_INPUT
+            )
 
         while True:
-            entry = input()
+            entry = input().strip()
 
             if not case_sensitive:
                 entry = entry.lower()
 
-            valid_entry = (
-                entry in valid_inputs if len(valid_inputs) > 0 else True
-            ) and entry not in invalid_inputs
+            valid_entry = len(valid_inputs) == 0 or entry in valid_inputs
 
             if valid_entry:
-                return entry, self.prompt_message
+                return entry
 
             self.erase_prompt_entry(self.prompt_message)
 
@@ -139,7 +162,7 @@ class Screen:
         self._render_contents_starting_at(prompt)
 
     def _render_content(self, content):
-        print(content.inner_text, end="", file=sys.stderr)
+        print(content.inner_text, end="", file=sys.stdout)
 
     def _clear_lines_starting_at(self, content):
         current_console_width = self.get_console_width()
@@ -156,8 +179,8 @@ class Screen:
         self.clear_lines(lines_to_clear)
 
     def _render_contents_starting_at(self, content):
-        for i in range(content.index_on_screen, len(self.contents)):
-            self._render_content(self.contents[i])
+        for index in range(content.index_on_screen, len(self.contents)):
+            self._render_content(self.contents[index])
 
     def _count_lines_occupied_by(self, text, current_console_width):
         lines = text.split("\n")
