@@ -1,6 +1,8 @@
 from os import path
 import uuid
 
+from pytube.__main__ import YouTube
+
 from mediakit import info
 from mediakit.media.convert import (
     merge_video_and_audio,
@@ -149,9 +151,11 @@ class MediaResource:
         if self.output_type == "audio":
             return self.audio_bytes_remaining
 
-    def copy(self):
+    def copy(self, source: YouTube = None):
+        final_source = source if source is not None else self.source
+
         return MediaResource(
-            self.source,
+            final_source,
             self.output_type,
             output_path=self.output_path,
             definition=self.definition,

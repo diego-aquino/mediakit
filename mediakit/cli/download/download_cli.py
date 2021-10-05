@@ -67,10 +67,10 @@ class DownloadCLI(LoadableCLI):
         videos = [YouTube(video_url) for video_url in video_urls]
         videos_data = self._load_videos_data(videos, formats)
 
-        available_formats_list = []
-        media_resources_list = []
-        skipped_formats_list = []
-        formats_replaced_by_fallback_list = []
+        available_formats_list: list = []
+        media_resources_list: "list[list[MediaResource]]" = []
+        skipped_formats_list: list = []
+        formats_replaced_by_fallback_list: list = []
 
         for (
             available_formats,
@@ -108,7 +108,10 @@ class DownloadCLI(LoadableCLI):
                 YouTube(source_video.watch_url) for _ in media_resources_to_download
             ]
             non_flatten_media_resources[video_index] = [
-                media_resource.copy() for media_resource in media_resources_to_download
+                media_resources_to_download[media_resource_index].copy(
+                    source=non_flatten_videos[video_index][media_resource_index]
+                )
+                for media_resource_index in range(len(media_resources_to_download))
             ]
             non_flatten_available_formats[video_index] = [
                 available_formats for _ in media_resources_to_download
@@ -122,7 +125,6 @@ class DownloadCLI(LoadableCLI):
 
         flatten_videos = flatten_list(non_flatten_videos)
         self.store.prepare_store(len(flatten_videos))
-        self._load_videos_data(flatten_videos, formats)
         self.store.videos = flatten_videos
 
         self.store.media_resources_to_download = flatten_list(
@@ -219,7 +221,7 @@ class DownloadCLI(LoadableCLI):
                 self.store.available_formats[video_index]
             )
 
-        if global_config.batch_file is None:
+        if len(self.store.videos) == 1:
             screen.update_content(
                 self.store.ready_to_download_labels[video_index],
                 self.formatter.format_ready_to_download_label(video_index),
