@@ -22,6 +22,7 @@ from mediakit.constants import (
 )
 from mediakit.globals import global_config
 from mediakit import exceptions
+from mediakit.utils.lists import flatten_list
 
 
 class DownloadCLI(LoadableCLI):
@@ -63,11 +64,78 @@ class DownloadCLI(LoadableCLI):
             self._show_batch_file_info(video_urls_to_download)
 
     def _register_videos_to_download(self, video_urls: str, formats: "list[str]"):
-        self.store.prepare_store(len(video_urls))
+        videos = [YouTube(video_url) for video_url in video_urls]
+        videos_data = self._load_videos_data(videos, formats)
 
-        def register_video_to_download(video_index: int):
-            video = YouTube(video_urls[video_index])
-            self.store.videos[video_index] = video
+        available_formats_list = []
+        media_resources_list = []
+        skipped_formats_list = []
+        formats_replaced_by_fallback_list = []
+
+        for (
+            available_formats,
+            media_resources_to_download,
+            skipped_formats,
+            formats_replaced_by_fallback,
+        ) in videos_data:
+            available_formats_list.append(available_formats)
+            media_resources_list.append(media_resources_to_download)
+            skipped_formats_list.append(skipped_formats)
+            formats_replaced_by_fallback_list.append(formats_replaced_by_fallback)
+
+        non_flatten_videos = [[video] for video in videos]
+        non_flatten_available_formats = [
+            [available_format] for available_format in available_formats_list
+        ]
+        non_flatten_media_resources = [
+            media_resources for media_resources in media_resources_list
+        ]
+        non_flatten_skipped_formats = [
+            [skipped_formats] for skipped_formats in skipped_formats_list
+        ]
+        non_flatten_formats_replaced_by_fallback = [
+            [replaced_formats] for replaced_formats in formats_replaced_by_fallback_list
+        ]
+
+        for video_index in range(len(non_flatten_videos)):
+            source_video = non_flatten_videos[video_index][0]
+            available_formats = non_flatten_available_formats[video_index][0]
+            media_resources_to_download = non_flatten_media_resources[video_index]
+            skipped_formats = non_flatten_skipped_formats[video_index][0]
+            replaced_formats = non_flatten_formats_replaced_by_fallback[video_index][0]
+
+            non_flatten_videos[video_index] = [
+                YouTube(source_video.watch_url) for _ in media_resources_to_download
+            ]
+            non_flatten_media_resources[video_index] = [
+                media_resource.copy() for media_resource in media_resources_to_download
+            ]
+            non_flatten_available_formats[video_index] = [
+                available_formats for _ in media_resources_to_download
+            ]
+            non_flatten_skipped_formats[video_index] = [
+                skipped_formats for _ in media_resources_to_download
+            ]
+            non_flatten_formats_replaced_by_fallback[video_index] = [
+                replaced_formats for _ in media_resources_to_download
+            ]
+
+        flatten_videos = flatten_list(non_flatten_videos)
+        self.store.prepare_store(len(flatten_videos))
+        self._load_videos_data(flatten_videos, formats)
+        self.store.videos = flatten_videos
+
+        self.store.media_resources_to_download = flatten_list(
+            non_flatten_media_resources
+        )
+        self.store.available_formats = flatten_list(non_flatten_available_formats)
+        self.store.skipped_formats = flatten_list(non_flatten_skipped_formats)
+        self.store.formats_replaced_by_fallback = flatten_list(
+            non_flatten_formats_replaced_by_fallback
+        )
+
+        for video_index in range(len(self.store.videos)):
+            video = self.store.videos[video_index]
 
             def handle_download_progress(video_index, _stream, _chunk, bytes_remaining):
                 self._handle_download_progress(video_index, bytes_remaining)
@@ -75,46 +143,6 @@ class DownloadCLI(LoadableCLI):
             video.register_on_progress_callback(
                 partial(handle_download_progress, video_index)
             )
-
-            available_formats = self._get_available_formats(video_index)
-            self.store.available_formats[video_index] = available_formats
-
-            media_resources = self._get_media_resources_to_download(
-                video_index, formats
-            )
-            self.store.media_resources_to_download[video_index] = media_resources
-
-        registering_threads = [
-            Thread(target=partial(register_video_to_download, video_index))
-            for video_index in range(len(video_urls))
-        ]
-
-        for thread in registering_threads:
-            thread.start()
-
-        for ongoing_thread in registering_threads:
-            ongoing_thread.join()
-
-    def _get_available_formats(self, video_index: int):
-        video_streams = self.store.videos[video_index].streams.filter(type="video")
-        audio_streams = self.store.videos[video_index].streams.filter(type="audio")
-
-        available_formats = {
-            "video": set(),
-            "audio": set(),
-        }
-        for stream in video_streams:
-            if stream.resolution is not None:
-                available_formats["video"].add(stream.resolution)
-        for stream in audio_streams:
-            available_formats["audio"].add(stream.abr)
-
-        available_formats_sorted_by_definition = {
-            "video": reversed(sorted(available_formats["video"], key=parse_int)),
-            "audio": reversed(sorted(available_formats["audio"], key=parse_int)),
-        }
-
-        return available_formats_sorted_by_definition
 
     def download_all(self):
         self._prerender_download_ui_components()
@@ -132,15 +160,16 @@ class DownloadCLI(LoadableCLI):
         def download(video_index: int, on_finish: Callable[..., None]):
             nonlocal at_least_one_file_was_downloaded
 
-            for media_resource in self.store.media_resources_to_download[video_index]:
-                self._create_download_progress(video_index, media_resource)
+            media_resource = self.store.media_resources_to_download[video_index]
 
-                media_resource.download()
+            self._create_download_progress(video_index, media_resource)
 
-                self._end_download_progress(video_index)
-                at_least_one_file_was_downloaded = True
+            media_resource.download()
 
-                on_finish()
+            self._end_download_progress(video_index)
+            at_least_one_file_was_downloaded = True
+
+            on_finish()
 
         def start_next_download():
             if len(video_indexes_left_to_download) == 0:
@@ -152,7 +181,7 @@ class DownloadCLI(LoadableCLI):
 
             should_ask_confirmation_to_download = (
                 not global_config.answer_yes_to_all_questions
-                and global_config.batch_file is None
+                and len(self.store.videos) == 1
             )
             if should_ask_confirmation_to_download:
                 user_has_confirmed = self._ask_for_confirmation_to_download(video_index)
@@ -237,18 +266,10 @@ class DownloadCLI(LoadableCLI):
         self, has_detailed_download_info_on_screen: "list[bool]"
     ):
         for video_index in range(len(self.store.videos)):
-            media_resources = self.store.media_resources_to_download[video_index]
-
-            all_media_resources_are_done = all(
-                map(
-                    lambda media_resource: media_resource.download_status
-                    == DownloadStatusCodes.DONE,
-                    media_resources,
-                )
-            )
+            media_resource = self.store.media_resources_to_download[video_index]
 
             should_clear_detailed_download_info = (
-                all_media_resources_are_done
+                media_resource.download_status == DownloadStatusCodes.DONE
                 and has_detailed_download_info_on_screen[video_index]
             )
 
@@ -283,6 +304,10 @@ class DownloadCLI(LoadableCLI):
 
     def _handle_download_progress(self, video_index: int, bytes_remaining: int):
         media_resource = self.store.downloading_media_resources[video_index]
+
+        if media_resource is None:
+            return
+
         downloading_stream = media_resource.downloading_stream
 
         if media_resource.output_type == "videoaudio":
@@ -338,7 +363,7 @@ class DownloadCLI(LoadableCLI):
 
     def _were_all_formats_skipped(self, video_index: int):
         return (
-            len(self.store.media_resources_to_download[video_index]) == 0
+            self.store.media_resources_to_download[video_index] is None
             and len(self.store.skipped_formats[video_index]) > 0
         )
 
@@ -354,24 +379,81 @@ class DownloadCLI(LoadableCLI):
             ContentCategories.INFO,
         )
 
-    def _get_media_resources_to_download(self, video_index: int, formats):
+    def _load_videos_data(self, videos: "list[YouTube]", formats):
+        videos_data = [None for _ in videos]
+
+        def load_video(video_index: int):
+            videos_data[video_index] = self._load_video_data(
+                videos[video_index], formats
+            )
+
+        loading_threads: "list[Thread]" = []
+        for video_index in range(len(videos)):
+            thread = Thread(target=partial(load_video, video_index))
+            loading_threads.append(thread)
+            thread.start()
+
+        for ongoing_thread in loading_threads:
+            ongoing_thread.join()
+
+        return videos_data
+
+    def _load_video_data(self, video: YouTube, formats):
+        available_formats = self._get_available_formats(video)
+        (
+            media_resources_to_download,
+            skipped_formats,
+            formats_replaced_by_fallback,
+        ) = self._get_media_resources_to_download(video, formats)
+
+        return (
+            available_formats,
+            media_resources_to_download,
+            skipped_formats,
+            formats_replaced_by_fallback,
+        )
+
+    def _get_available_formats(self, video: YouTube):
+        video_streams = video.streams.filter(type="video")
+        audio_streams = video.streams.filter(type="audio")
+
+        available_formats = {
+            "video": set(),
+            "audio": set(),
+        }
+        for stream in video_streams:
+            if stream.resolution is not None:
+                available_formats["video"].add(stream.resolution)
+        for stream in audio_streams:
+            available_formats["audio"].add(stream.abr)
+
+        available_formats_sorted_by_definition = {
+            "video": list(reversed(sorted(available_formats["video"], key=parse_int))),
+            "audio": list(reversed(sorted(available_formats["audio"], key=parse_int))),
+        }
+
+        return available_formats_sorted_by_definition
+
+    def _get_media_resources_to_download(self, video: YouTube, formats):
         if len(formats) == 0:
             default_media_resource = MediaResource(
-                self.store.videos[video_index],
+                video,
                 "videoaudio",
                 output_path=self.store.output_path,
                 filename=self.store.filename,
             )
 
-            return [default_media_resource]
+            return [default_media_resource], [], []
+
+        lowecased_formats = [selected_format.lower() for selected_format in formats]
+        grouped_formats, invalid_formats = self._group_and_validate_formats(
+            lowecased_formats
+        )
 
         media_resources_to_download = []
         resources_registered_to_download = set()
-
-        lowecased_formats = [selected_format.lower() for selected_format in formats]
-        grouped_formats = self._group_and_validate_formats(
-            video_index, lowecased_formats
-        )
+        skipped_formats = [invalid_format for invalid_format in invalid_formats]
+        formats_replaced_by_fallback = []
 
         definitions_count = {}
         for group in grouped_formats:
@@ -386,17 +468,15 @@ class DownloadCLI(LoadableCLI):
             should_append_format_to_filename = definitions_count[download_format] > 1
 
             available_definition = self._get_available_definition(
-                video_index, download_format, definition
+                video, download_format, definition
             )
 
             if available_definition is None:
-                self.store.skipped_formats[video_index].append(
-                    [download_format, definition]
-                )
+                skipped_formats.append([download_format, definition])
                 continue
 
             if available_definition != definition:
-                self.store.formats_replaced_by_fallback[video_index].append(
+                formats_replaced_by_fallback.append(
                     {
                         "base": {"format": download_format, "definition": definition},
                         "fallback": {
@@ -424,7 +504,7 @@ class DownloadCLI(LoadableCLI):
                 filename_suffix = ""
 
             media_resource = MediaResource(
-                self.store.videos[video_index],
+                video,
                 download_format,
                 output_path=self.store.output_path,
                 definition=available_definition,
@@ -437,10 +517,15 @@ class DownloadCLI(LoadableCLI):
                 (download_format, available_definition)
             )
 
-        return media_resources_to_download
+        return (
+            media_resources_to_download,
+            skipped_formats,
+            formats_replaced_by_fallback,
+        )
 
-    def _group_and_validate_formats(self, video_index: int, formats):
+    def _group_and_validate_formats(self, formats):
         grouped_formats = []
+        invalid_formats = []
 
         format_index = 0
         while format_index < len(formats):
@@ -465,9 +550,7 @@ class DownloadCLI(LoadableCLI):
                         {"format": current_item, "definition": "max"}
                     )
                 else:
-                    self.store.skipped_formats[video_index].append(
-                        [current_item, next_item]
-                    )
+                    invalid_formats.append([current_item, next_item])
                     format_index += 1
 
             elif is_current_item_a_definition:
@@ -476,13 +559,13 @@ class DownloadCLI(LoadableCLI):
                 )
 
             else:
-                self.store.skipped_formats[video_index].append([current_item])
+                invalid_formats.append([current_item])
 
             format_index += 1
 
-        return grouped_formats
+        return grouped_formats, invalid_formats
 
-    def _get_available_definition(self, video_index, base_format, base_definition):
+    def _get_available_definition(self, video: YouTube, base_format, base_definition):
         if base_format.startswith("video"):
             is_valid_definition = (
                 base_definition in VIDEO_DEFINITIONS
@@ -496,9 +579,7 @@ class DownloadCLI(LoadableCLI):
 
         possible_definition = base_definition
         while possible_definition is not None:
-            if self._is_definition_available(
-                video_index, base_format, possible_definition
-            ):
+            if self._is_definition_available(video, base_format, possible_definition):
                 return possible_definition
 
             possible_definition = VIDEO_DEFINITIONS_ALIASES.get(
@@ -514,17 +595,13 @@ class DownloadCLI(LoadableCLI):
         return None
 
     def _is_definition_available(
-        self, video_index: int, base_format: str, definition: str
+        self, video: YouTube, base_format: str, definition: str
     ):
-        video = self.store.videos[video_index]
-
         if base_format.startswith("video"):
             final_definition = VIDEO_DEFINITIONS_ALIASES.get(definition, definition)
 
             if final_definition == "max":
-                video_streams = self.store.videos[video_index].streams.filter(
-                    type="video"
-                )
+                video_streams = video.streams.filter(type="video")
                 return len(video_streams) > 0
 
             video_streams_with_specified_resolution = video.streams.filter(

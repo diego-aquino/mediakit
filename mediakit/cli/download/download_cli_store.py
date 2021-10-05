@@ -28,7 +28,7 @@ class DownloadCLIStore(LoadableCLIStore):
         self.videos: "list[YouTube]" = []
 
         self.available_formats = []
-        self.media_resources_to_download: "list[list[MediaResource]]" = []
+        self.media_resources_to_download: "list[MediaResource]" = []
         self.skipped_formats = []
         self.formats_replaced_by_fallback = []
 
@@ -46,7 +46,7 @@ class DownloadCLIStore(LoadableCLIStore):
         self.available_formats = [
             {"video": [], "audio": []} for _ in range(number_of_videos)
         ]
-        self.media_resources_to_download = [[] for _ in range(number_of_videos)]
+        self.media_resources_to_download = [None for _ in range(number_of_videos)]
         self.skipped_formats = [[] for _ in range(number_of_videos)]
         self.formats_replaced_by_fallback = [[] for _ in range(number_of_videos)]
 
@@ -75,7 +75,7 @@ class DownloadCLIStore(LoadableCLIStore):
         self.videos: "list[YouTube]" = []
 
         self.available_formats = []
-        self.media_resources_to_download: "list[list[MediaResource]]" = []
+        self.media_resources_to_download: "list[MediaResource]" = []
         self.skipped_formats = []
         self.formats_replaced_by_fallback = []
 

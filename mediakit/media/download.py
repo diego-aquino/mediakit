@@ -31,6 +31,8 @@ class MediaResource:
         self.source = source
         self.output_type = output_type
         self.output_path = output_path
+        self.definition = definition
+        self.filename_suffix = filename_suffix
 
         final_definition = (
             VIDEO_DEFINITIONS_ALIASES.get(definition, definition)
@@ -39,15 +41,30 @@ class MediaResource:
         )
         is_alias_definition = definition != final_definition
 
+        default_extension = "mp4" if self.output_type.startswith("video") else "mp3"
+
         if filename:
-            filename_without_extension, extension = filename.split(".")
-            self.filename = get_safe_filename(
-                f"{filename_without_extension}{filename_suffix}.{extension}"
-            )
+            *initial_filename_components, last_filename_component = filename.split(".")
+
+            extension_was_provided = len(initial_filename_components) > 0
+
+            if extension_was_provided:
+                filename_without_extension = (
+                    ".".join(initial_filename_components) + filename_suffix
+                )
+                extension = last_filename_component
+                self.filename = get_safe_filename(
+                    f"{filename_without_extension}.{extension}"
+                )
+            else:
+                filename_without_extension = last_filename_component + filename_suffix
+                self.filename = get_safe_filename(
+                    f"{filename_without_extension}.{default_extension}"
+                )
         else:
+            filename_without_extension = source.title + filename_suffix
             self.filename = get_safe_filename(
-                f"{source.title}{filename_suffix}"
-                + (".mp4" if self.output_type.startswith("video") else ".mp3")
+                f"{filename_without_extension}.{default_extension}"
             )
 
         if output_type.startswith("video"):
@@ -131,6 +148,16 @@ class MediaResource:
 
         if self.output_type == "audio":
             return self.audio_bytes_remaining
+
+    def copy(self):
+        return MediaResource(
+            self.source,
+            self.output_type,
+            output_path=self.output_path,
+            definition=self.definition,
+            filename=self.filename,
+            filename_suffix=self.filename_suffix,
+        )
 
     def _convert_dowloaded_resources(self):
         if self.output_type.startswith("video"):

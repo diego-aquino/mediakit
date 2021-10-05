@@ -153,20 +153,10 @@ class DownloadCLIFormatter:
             video_index, media_resource.download_status
         )
         status_color = self.get_status_color(media_resource.download_status)
-
-        is_downloading_first_media_resource = (
-            self.store.downloading_media_resources[video_index]
-            is self.store.media_resources_to_download[video_index][0]
-        )
-
-        should_include_starting_newline = is_downloading_first_media_resource or (
-            media_resource.download_status != DownloadStatusCodes.DONE
-        )
-
         label = media_resource.download_status.title()
 
         heading = (
-            ("\n" if should_include_starting_newline else "")
+            "\n"
             + colored(f"{status_character} {label} ", fore=status_color)
             + colored(
                 f"{self.format_video_title(video_index)} ",
@@ -250,10 +240,10 @@ class DownloadCLIFormatter:
 
         return progress_bar
 
-    def format_download_formats(self, video_index: int):
+    def format_download_formats(self):
         formatted_definitions = map(
             lambda media_resource: media_resource.formatted_definition,
-            self.store.media_resources_to_download[video_index],
+            self.store.media_resources_to_download,
         )
         formatted_download_formats = " ".join(formatted_definitions)
         return formatted_download_formats
@@ -391,7 +381,7 @@ class DownloadCLIFormatter:
 
     def format_ready_to_download_label(self, video_index: int):
         formatted_title = limit_text_length(self.store.videos[video_index].title, 26)
-        formatted_download_formats = self.format_download_formats(video_index)
+        formatted_download_formats = self.format_download_formats()
 
         is_preceded_by_format_warnings = (
             len(self.store.skipped_formats[video_index]) > 0
@@ -418,12 +408,9 @@ class DownloadCLIFormatter:
         )
 
     def format_total_download_size_label(self, video_index: int):
-        media_resource_sizes = map(
-            lambda media_resource: media_resource.total_size,
-            self.store.media_resources_to_download[video_index],
-        )
+        media_resource = self.store.media_resources_to_download[video_index]
+        total_download_size = media_resource.total_size
 
-        total_download_size = sum(media_resource_sizes)
         formatted_download_size = self.format_data_size(total_download_size)
         total_download_size_label = Content.format_inner_text(
             "Total download size: "
