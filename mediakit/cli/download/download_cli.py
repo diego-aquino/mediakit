@@ -5,7 +5,7 @@ from time import sleep
 from typing import Callable
 from pytube import YouTube
 
-from mediakit.cli.screen import screen, ContentCategories
+from mediakit.cli.screen import Content, screen, ContentCategories
 from mediakit.cli.colors import colored, Colors
 from mediakit.media.download import DownloadStatusCodes, MediaResource
 from mediakit.utils.format import limit_text_length, parse_int
@@ -106,12 +106,14 @@ class DownloadCLI(LoadableCLI):
         return available_formats_sorted_by_definition
 
     def download_all(self):
+        self._prerender_download_ui_components()
+
         at_least_one_file_was_downloaded = False
 
-        self.store.download_UI_update_thread = Thread(
-            target=self._keep_download_progress_UI_updated
+        self.store.download_ui_update_thread = Thread(
+            target=self._keep_download_progress_ui_updated
         )
-        self.store.download_UI_update_thread.start()
+        self.store.download_ui_update_thread.start()
 
         video_indexes_left_to_download = list(range(len(self.store.videos) - 1, -1, -1))
         ongoing_download_threads: "list[Thread]" = []
@@ -169,7 +171,7 @@ class DownloadCLI(LoadableCLI):
     def _show_download_summary(self, video_index: int):
         screen.update_content(
             self.store.video_headings[video_index],
-            self.formatter.format_video_heading(video_index),
+            self.formatter.format_download_summary(video_index),
         )
 
         if self._were_all_formats_skipped(video_index):
@@ -177,59 +179,11 @@ class DownloadCLI(LoadableCLI):
                 self.store.available_formats[video_index]
             )
 
-        if len(self.store.skipped_formats[video_index]) > 0:
-            self._show_skipped_formats_warning(video_index)
-
-        if len(self.store.formats_replaced_by_fallback[video_index]) > 0:
-            self._show_fallback_replacement_summary(video_index)
-
-        formatted_title = limit_text_length(self.store.videos[video_index].title, 26)
-        formatted_download_formats = self.formatter.format_download_formats(video_index)
-
-        media_resource_sizes = map(
-            lambda media_resource: media_resource.total_size,
-            self.store.media_resources_to_download[video_index],
-        )
-        total_download_size = sum(media_resource_sizes)
-        formatted_download_size = self.formatter.format_data_size(total_download_size)
-
-        is_preceded_by_format_warnings = (
-            len(self.store.skipped_formats[video_index]) > 0
-            or len(self.store.formats_replaced_by_fallback[video_index]) > 0
-        )
-
         if global_config.batch_file is None:
             screen.update_content(
                 self.store.ready_to_download_labels[video_index],
-                ("\n" if is_preceded_by_format_warnings else "")
-                + "Ready to download "
-                + colored(
-                    f"{formatted_title} ",
-                    fore=Colors.fore.CYAN,
-                    style=Colors.style.BRIGHT,
-                )
-                + colored(
-                    f"{formatted_download_formats}\n",
-                    fore=Colors.fore.BLUE,
-                    style=Colors.style.BRIGHT,
-                ),
+                self.formatter.format_ready_to_download_label(video_index),
             )
-
-        screen.update_content(
-            self.store.total_download_size_labels[video_index],
-            "Total download size: "
-            + colored(f"{formatted_download_size}\n", fore=Colors.fore.YELLOW),
-        )
-
-    def _show_skipped_formats_warning(self, video_index: int):
-        screen.append_content(
-            self.formatter.format_skipped_formats_warning(video_index),
-            ContentCategories.WARNING,
-        )
-
-    def _show_fallback_replacement_summary(self, video_index: int):
-        for summary in self.formatter.format_fallback_replacement_summary(video_index):
-            screen.append_content(summary, ContentCategories.WARNING)
 
     def _ask_for_confirmation_to_download(self, video_index: int):
         prompt = self.store.download_confirmation_prompts[video_index]
@@ -248,18 +202,27 @@ class DownloadCLI(LoadableCLI):
     ):
         self.store.downloading_media_resources[video_index] = media_resource
         screen.update_content(
-            self.store.download_progress_UIs[video_index],
+            self.store.download_progress_uis[video_index],
             self.formatter.format_current_download_progress(video_index),
         )
 
-    def _keep_download_progress_UI_updated(self):
+    def _prerender_download_ui_components(self):
+        for video_index in range(len(self.store.videos)):
+            self.store.video_headings[video_index] = screen.append_content("")
+            self.store.ready_to_download_labels[video_index] = screen.append_content("")
+            self.store.download_confirmation_prompts[
+                video_index
+            ] = screen.append_content("")
+            self.store.download_progress_uis[video_index] = screen.append_content("")
+
+    def _keep_download_progress_ui_updated(self):
         has_detailed_download_info_on_screen = [True for _ in self.store.videos]
 
         while not self.store.is_terminated:
-            self._update_all_download_progress_UIs(has_detailed_download_info_on_screen)
+            self._update_all_download_progress_uis(has_detailed_download_info_on_screen)
             sleep(self.store.PROGRESS_UI_UPDATE_INTERVAL)
 
-    def _update_all_download_progress_UIs(
+    def _update_all_download_progress_uis(
         self, has_detailed_download_info_on_screen: "list[bool]"
     ):
         for video_index in range(len(self.store.videos)):
@@ -289,16 +252,16 @@ class DownloadCLI(LoadableCLI):
         ]
 
         for video_index in videos_with_downloading_media_resources:
-            self._update_download_progress_UI(video_index)
-            self._update_progress_UI_interval_if_necessary(video_index)
+            self._update_download_progress_ui(video_index)
+            self._update_progress_ui_interval_if_necessary(video_index)
 
-    def _update_download_progress_UI(self, video_index: int):
+    def _update_download_progress_ui(self, video_index: int):
         screen.update_content(
-            self.store.download_progress_UIs[video_index],
+            self.store.download_progress_uis[video_index],
             self.formatter.format_current_download_progress(video_index),
         )
 
-    def _update_progress_UI_interval_if_necessary(self, video_index: int):
+    def _update_progress_ui_interval_if_necessary(self, video_index: int):
         media_resource = self.store.downloading_media_resources[video_index]
         required_interval = self.store.UI_UPDATE_INTERVALS.get(
             media_resource.download_status, self.store.DEFAULT_UI_UPDATE_INTERVAL
@@ -324,10 +287,10 @@ class DownloadCLI(LoadableCLI):
             media_resource.audio_bytes_remaining = bytes_remaining
 
     def _end_download_progress(self, video_index: int):
-        self._update_download_progress_UI(video_index)
+        self._update_download_progress_ui(video_index)
 
         self.store.downloading_media_resources[video_index] = None
-        self.store.download_progress_UIs[video_index] = None
+        self.store.download_progress_uis[video_index] = None
 
     def _show_success_message(self):
         screen.append_content(
@@ -341,12 +304,10 @@ class DownloadCLI(LoadableCLI):
 
     def _clear_detailed_download_info_from_screen(self, video_index: int):
         video_heading = self.store.video_headings[video_index]
-        total_download_size_label = self.store.total_download_size_labels[video_index]
         ready_to_download_label = self.store.ready_to_download_labels[video_index]
         confirmation_prompt = self.store.download_confirmation_prompts[video_index]
 
         screen.update_content(video_heading, "")
-        screen.update_content(total_download_size_label, "")
         screen.update_content(ready_to_download_label, "")
 
         if not confirmation_prompt.is_empty():
@@ -354,15 +315,15 @@ class DownloadCLI(LoadableCLI):
             screen.update_content(confirmation_prompt, "")
 
     def terminate(self):
-        self._update_all_download_progress_UIs([True for _ in self.store.videos])
+        self._update_all_download_progress_uis([True for _ in self.store.videos])
 
         self.store.loading_label = None
         self.store.is_loading = False
 
         self.store.is_terminated = True
 
-        if self.store.download_UI_update_thread is not None:
-            self.store.download_UI_update_thread.join()
+        if self.store.download_ui_update_thread is not None:
+            self.store.download_ui_update_thread.join()
 
     def _were_all_formats_skipped(self, video_index: int):
         return (

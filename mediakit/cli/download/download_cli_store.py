@@ -12,7 +12,7 @@ class DownloadCLIStore(LoadableCLIStore):
         self.MAX_SHORT_VIDEO_TITLE_LENGTH = 26
 
         self.UI_UPDATE_INTERVALS = {
-            DownloadStatusCodes.DOWNLOADING: 0.2,
+            DownloadStatusCodes.DOWNLOADING: 0.15,
             DownloadStatusCodes.CONVERTING: 0.1,
         }
         self.DEFAULT_UI_UPDATE_INTERVAL = 0.2
@@ -20,7 +20,6 @@ class DownloadCLIStore(LoadableCLIStore):
 
         self.video_headings: "list[Content]" = []
         self.ready_to_download_labels: "list[Content]" = []
-        self.total_download_size_labels: "list[Content]" = []
         self.download_confirmation_prompts: "list[Content]" = []
 
         self.output_path: str = None
@@ -34,16 +33,15 @@ class DownloadCLIStore(LoadableCLIStore):
         self.formats_replaced_by_fallback = []
 
         self.downloading_media_resources: "list[MediaResource]" = []
-        self.download_progress_UIs: "list[Content]" = []
+        self.download_progress_uis: "list[Content]" = []
         self.rotating_line_frames: "list[int]" = []
         self.loading_dots_frames: "list[int]" = []
 
-        self.download_UI_update_thread: Thread = None
+        self.download_ui_update_thread: Thread = None
 
         self.is_terminated: bool = False
 
     def prepare_store(self, number_of_videos: int):
-
         self.videos = [None for _ in range(number_of_videos)]
         self.available_formats = [
             {"video": [], "audio": []} for _ in range(number_of_videos)
@@ -54,21 +52,12 @@ class DownloadCLIStore(LoadableCLIStore):
 
         self.downloading_media_resources = [None for _ in range(number_of_videos)]
 
-        self.ready_to_download_labels = []
-        self.video_headings = []
-        self.total_download_size_labels = []
-        self.download_progress_UIs = []
-
-        for _ in range(number_of_videos):
-            self.video_headings.append(screen.append_content(""))
-            self.total_download_size_labels.append(
-                screen.append_content("", ContentCategories.INFO)
-            )
-            self.ready_to_download_labels.append(
-                screen.append_content("", ContentCategories.INFO)
-            )
-            self.download_confirmation_prompts.append(screen.append_content(""))
-            self.download_progress_UIs.append(screen.append_content(""))
+        self.video_headings = [None for _ in range(number_of_videos)]
+        self.ready_to_download_labels = [None for _ in range(number_of_videos)]
+        self.download_progress_uis = [None for _ in range(number_of_videos)]
+        self.download_confirmation_prompts: "list[Content]" = [
+            None for _ in range(number_of_videos)
+        ]
 
         self.rotating_line_frames = [0 for _ in range(number_of_videos)]
         self.loading_dots_frames = [0 for _ in range(number_of_videos)]
@@ -78,7 +67,6 @@ class DownloadCLIStore(LoadableCLIStore):
 
         self.video_headings: "list[Content]" = []
         self.ready_to_download_labels: "list[Content]" = []
-        self.total_download_size_labels: "list[Content]" = []
         self.download_confirmation_prompts: "list[Content]" = []
 
         self.output_path: str = None
@@ -92,6 +80,6 @@ class DownloadCLIStore(LoadableCLIStore):
         self.formats_replaced_by_fallback = []
 
         self.downloading_media_resources: "list[MediaResource]" = []
-        self.download_progress_UIs: "list[Content]" = []
+        self.download_progress_uis: "list[Content]" = []
         self.rotating_line_frames: "list[int]" = []
         self.loading_dots_frames: "list[int]" = []

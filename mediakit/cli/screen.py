@@ -29,40 +29,49 @@ class Content:
         self.index_on_screen = index_on_screen
         self.update(text, category)
 
-    def is_empty(self):
-        return self.inner_text == ""
-
     def update(self, text: str = None, category: str = None):
         if category is not None:
             self._update_category(category)
         if text is not None:
             self._update_inner_text(text)
 
+    def is_empty(self):
+        return self.inner_text == ""
+
     def _update_category(self, category: str):
-        if category == ContentCategories.NORMAL:
-            self.category_label = ""
-        elif category == ContentCategories.INFO:
-            self.category_label = colored("info ", fore=Colors.fore.BLUE)
-        elif category == ContentCategories.WARNING:
-            self.category_label = colored("warning ", fore=Colors.fore.YELLOW)
-        elif category == ContentCategories.ERROR:
-            self.category_label = colored("error ", fore=Colors.fore.RED)
-        elif category == ContentCategories.USER_INPUT:
-            self.category_label = colored("? ", fore=Colors.fore.BLUE)
+        self.category = category
 
     def _update_inner_text(self, text):
+        self.inner_text = Content.format_inner_text(text, self.category)
+
+    @staticmethod
+    def format_category_label(category: str):
+        if category == ContentCategories.NORMAL:
+            return ""
+        elif category == ContentCategories.INFO:
+            return colored("info ", fore=Colors.fore.BLUE)
+        elif category == ContentCategories.WARNING:
+            return colored("warning ", fore=Colors.fore.YELLOW)
+        elif category == ContentCategories.ERROR:
+            return colored("error ", fore=Colors.fore.RED)
+        elif category == ContentCategories.USER_INPUT:
+            return colored("? ", fore=Colors.fore.BLUE)
+
+        return ""
+
+    @staticmethod
+    def format_inner_text(text: str, category: str):
         if len(text) == 0:
-            self.inner_text = ""
-            return
+            return ""
 
         new_text_stripped_of_leading_newlines = text.lstrip("\n")
         number_of_leading_newlines = len(text) - len(
             new_text_stripped_of_leading_newlines
         )
 
-        self.inner_text = (
+        return (
             "\n" * number_of_leading_newlines
-            + self.category_label
+            + Content.format_category_label(category)
             + new_text_stripped_of_leading_newlines
         )
 
@@ -70,7 +79,6 @@ class Content:
 class Screen:
     def __init__(self):
         self.contents = []
-        self.prompt_message = None
 
     def append_content(self, content_text, category=ContentCategories.NORMAL):
         index_on_screen = len(self.contents)
@@ -132,13 +140,13 @@ class Screen:
         valid_inputs = set(valid_inputs)
 
         if index_on_screen is None:
-            self.prompt_message = self.append_content(
+            prompt_message = self.append_content(
                 message, category=ContentCategories.USER_INPUT
             )
         else:
-            self.prompt_message = self.contents[index_on_screen]
+            prompt_message = self.contents[index_on_screen]
             self.update_content(
-                self.prompt_message, message, new_category=ContentCategories.USER_INPUT
+                prompt_message, message, new_category=ContentCategories.USER_INPUT
             )
 
         while True:
@@ -152,7 +160,7 @@ class Screen:
             if valid_entry:
                 return entry
 
-            self.erase_prompt_entry(self.prompt_message)
+            self.erase_prompt_entry(prompt_message)
 
     def erase_prompt_entry(self, prompt):
         lines_occupied_by_entry = 2  # <entry>\n<empty line> -> 2 lines to clear

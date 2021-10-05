@@ -5,7 +5,7 @@ from mediakit.globals import global_config
 from mediakit.utils.format import limit_text_length, parse_int
 from mediakit.media.download import DownloadStatusCodes
 from mediakit.cli.colors import Colors, colored
-from mediakit.cli.screen import screen
+from mediakit.cli.screen import Content, ContentCategories, screen
 from mediakit.cli.download.download_cli_store import DownloadCLIStore
 
 BYTES_PER_MEGABYTES = 1024 * 1024
@@ -49,6 +49,25 @@ class DownloadCLIFormatter:
             + "...\n"
         )
 
+    def format_download_summary(self, video_index: int):
+        skipped_formats_warning = self.format_skipped_formats_warning(video_index)
+        fallback_replacement_summary = self.format_fallback_replacement_summary(
+            video_index
+        )
+
+        total_download_size_label = self.format_total_download_size_label(video_index)
+
+        download_summary_components = [
+            self.format_video_heading(video_index) + "\n",
+            skipped_formats_warning,
+            fallback_replacement_summary,
+            total_download_size_label,
+        ]
+
+        return "".join(
+            filter(lambda component: len(component) > 0, download_summary_components)
+        )
+
     def format_video_heading(self, video_index: int):
         formatted_video_length = self.format_video_length(video_index)
 
@@ -75,7 +94,7 @@ class DownloadCLIFormatter:
                 formatted_video_title, fore=Colors.fore.CYAN, style=Colors.style.BRIGHT
             )
             + spaces_between_heading_components
-            + colored(f"({formatted_video_length})\n\n", style=Colors.style.BRIGHT)
+            + colored(f"({formatted_video_length})\n", style=Colors.style.BRIGHT)
         )
 
         return video_heading
@@ -132,9 +151,10 @@ class DownloadCLIFormatter:
     def format_download_progress_heading(self, video_index: int):
         media_resource = self.store.downloading_media_resources[video_index]
 
-        status_character, status_color = self.get_status_resources(
+        status_character = self.get_next_status_character(
             video_index, media_resource.download_status
         )
+        status_color = self.get_status_color(media_resource.download_status)
 
         is_downloading_first_media_resource = (
             self.store.downloading_media_resources[video_index]
@@ -165,9 +185,7 @@ class DownloadCLIFormatter:
 
     def format_download_progress_bar(self, video_index: int):
         media_resource = self.store.downloading_media_resources[video_index]
-        _, status_color = self.get_status_resources(
-            video_index, media_resource.download_status
-        )
+        status_color = self.get_status_color(media_resource.download_status)
 
         bytes_downloaded = (
             media_resource.total_size - media_resource.get_total_bytes_remaining()
@@ -234,10 +252,6 @@ class DownloadCLIFormatter:
 
         return progress_bar
 
-    def format_data_size(self, size_in_bytes):
-        size_in_megabytes = size_in_bytes / BYTES_PER_MEGABYTES
-        return f"{size_in_megabytes:.1f} MB"
-
     def format_download_formats(self, video_index: int):
         formatted_definitions = map(
             lambda media_resource: media_resource.formatted_definition,
@@ -246,34 +260,37 @@ class DownloadCLIFormatter:
         formatted_download_formats = " ".join(formatted_definitions)
         return formatted_download_formats
 
-    def get_status_resources(
+    def get_next_status_character(
         self, video_index: int, download_status: DownloadStatusCodes
     ):
-        status_character, status_color = "", ""
-
         if download_status == DownloadStatusCodes.DOWNLOADING:
             self.store.rotating_line_frames[video_index] = (
                 self.store.rotating_line_frames[video_index] + 1
             ) % 4
 
-            status_character = ROTATING_LINES[
-                self.store.rotating_line_frames[video_index]
-            ]
-            status_color = Colors.fore.YELLOW
+            return ROTATING_LINES[self.store.rotating_line_frames[video_index]]
 
         if download_status == DownloadStatusCodes.CONVERTING:
             self.store.loading_dots_frames[video_index] = (
                 self.store.loading_dots_frames[video_index] + 1
             ) % 10
 
-            status_character = LOADING_DOTS[self.store.loading_dots_frames[video_index]]
-            status_color = Colors.fore.CYAN
+            return LOADING_DOTS[self.store.loading_dots_frames[video_index]]
 
         if download_status == DownloadStatusCodes.DONE:
-            status_character = "✔"
-            status_color = Colors.fore.GREEN
+            return "✔"
 
-        return status_character, status_color
+        return ""
+
+    def get_status_color(self, download_status: DownloadStatusCodes):
+        if download_status == DownloadStatusCodes.DOWNLOADING:
+            return Colors.fore.YELLOW
+        if download_status == DownloadStatusCodes.CONVERTING:
+            return Colors.fore.CYAN
+        if download_status == DownloadStatusCodes.DONE:
+            return Colors.fore.GREEN
+
+        return ""
 
     def format_available_formats(self, video_index: int):
         video_streams = self.store.videos[video_index].streams.filter(type="video")
@@ -297,6 +314,11 @@ class DownloadCLIFormatter:
         return available_formats_sorted_by_definition
 
     def format_skipped_formats_warning(self, video_index: int):
+        skipped_formats = self.store.skipped_formats[video_index]
+
+        if len(skipped_formats) == 0:
+            return ""
+
         formatted_skipped_formats = [
             f'[{" ".join(skipped_format)}]'
             for skipped_format in self.store.skipped_formats[video_index]
@@ -323,7 +345,12 @@ class DownloadCLIFormatter:
             + "...\n"
         )
 
-        return skipped_formats_message
+        skipped_formats_warning = Content.format_inner_text(
+            skipped_formats_message,
+            ContentCategories.WARNING,
+        )
+
+        return skipped_formats_warning
 
     def format_fallback_replacement_summary(self, video_index: int):
         replacement_summaries = []
@@ -350,7 +377,12 @@ class DownloadCLIFormatter:
                 + "\n"
             )
 
-        return replacement_summaries
+        formatted_replacement_summaries = [
+            Content.format_inner_text(summary_text, ContentCategories.WARNING)
+            for summary_text in replacement_summaries
+        ]
+
+        return "\n".join(formatted_replacement_summaries)
 
     def format_replaced_format(self, current_format, definition):
         return (
@@ -358,3 +390,51 @@ class DownloadCLIFormatter:
             + (f"{current_format} " if current_format != "videoaudio" else "")
             + f"{definition}]"
         )
+
+    def format_ready_to_download_label(self, video_index: int):
+        formatted_title = limit_text_length(self.store.videos[video_index].title, 26)
+        formatted_download_formats = self.format_download_formats(video_index)
+
+        is_preceded_by_format_warnings = (
+            len(self.store.skipped_formats[video_index]) > 0
+            or len(self.store.formats_replaced_by_fallback[video_index]) > 0
+        )
+
+        prefix = "\n" if is_preceded_by_format_warnings else ""
+        colored_formatted_title = colored(
+            f"{formatted_title} ",
+            fore=Colors.fore.CYAN,
+            style=Colors.style.BRIGHT,
+        )
+        colored_formatted_download_formats = colored(
+            f"{formatted_download_formats}\n",
+            fore=Colors.fore.BLUE,
+            style=Colors.style.BRIGHT,
+        )
+
+        return (
+            prefix
+            + "Ready to download "
+            + colored_formatted_title
+            + colored_formatted_download_formats
+        )
+
+    def format_total_download_size_label(self, video_index: int):
+        media_resource_sizes = map(
+            lambda media_resource: media_resource.total_size,
+            self.store.media_resources_to_download[video_index],
+        )
+
+        total_download_size = sum(media_resource_sizes)
+        formatted_download_size = self.format_data_size(total_download_size)
+        total_download_size_label = Content.format_inner_text(
+            "Total download size: "
+            + colored(f"{formatted_download_size}\n", fore=Colors.fore.YELLOW),
+            ContentCategories.INFO,
+        )
+
+        return total_download_size_label
+
+    def format_data_size(self, size_in_bytes):
+        size_in_megabytes = size_in_bytes / BYTES_PER_MEGABYTES
+        return f"{size_in_megabytes:.1f} MB"
