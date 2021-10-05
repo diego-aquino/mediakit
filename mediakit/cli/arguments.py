@@ -113,7 +113,7 @@ class CommandArgs:
 
     def has_video_url(self):
         for argument in self.unique_arguments:
-            if regex.is_video_url_like(argument):
+            if regex.is_youtube_video_url(argument):
                 return True
 
         return False

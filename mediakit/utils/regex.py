@@ -42,9 +42,9 @@ def matches_a_youtube_url(string):
     return match(YOUTUBE_URL_REGEX, string, 0)
 
 
-def is_video_url_like(string):
+def is_youtube_video_url(string):
     video_id = extract_video_id(string)
-    if video_id is not None or matches_a_youtube_url(string):
+    if video_id is not None and matches_a_youtube_url(string):
         return True
 
     return False
