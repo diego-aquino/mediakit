@@ -5,10 +5,10 @@ from time import sleep
 from typing import Callable
 from pytube import YouTube
 
-from mediakit.cli.screen import Content, screen, ContentCategories
+from mediakit.cli.screen import screen, ContentCategories
 from mediakit.cli.colors import colored, Colors
 from mediakit.media.download import DownloadStatusCodes, MediaResource
-from mediakit.utils.format import limit_text_length, parse_int
+from mediakit.utils.format import parse_int
 from mediakit.cli.loadble_cli import LoadableCLI
 from mediakit.cli.download.download_cli_formatter import DownloadCLIFormatter
 from mediakit.cli.download.download_cli_store import DownloadCLIStore
@@ -48,7 +48,7 @@ class DownloadCLI(LoadableCLI):
 
         if is_loading:
             loading_label = (
-                "Loading videos (this might take a while)"
+                "Loading videos"
                 if number_of_videos_being_loaded > 1
                 else "Loading video"
             )
@@ -65,7 +65,7 @@ class DownloadCLI(LoadableCLI):
     def _register_videos_to_download(self, video_urls: str, formats: "list[str]"):
         self.store.prepare_store(len(video_urls))
 
-        for video_index in range(len(video_urls)):
+        def register_video_to_download(video_index: int):
             video = YouTube(video_urls[video_index])
             self.store.videos[video_index] = video
 
@@ -83,6 +83,17 @@ class DownloadCLI(LoadableCLI):
                 video_index, formats
             )
             self.store.media_resources_to_download[video_index] = media_resources
+
+        registering_threads = [
+            Thread(target=partial(register_video_to_download, video_index))
+            for video_index in range(len(video_urls))
+        ]
+
+        for thread in registering_threads:
+            thread.start()
+
+        for ongoing_thread in registering_threads:
+            ongoing_thread.join()
 
     def _get_available_formats(self, video_index: int):
         video_streams = self.store.videos[video_index].streams.filter(type="video")

@@ -44,9 +44,7 @@ class DownloadCLIFormatter:
                 if number_of_valid_urls > 1
                 else colored("video URL", fore=Colors.fore.CYAN)
             )
-            + ". Preparing to download "
-            + ("them" if number_of_valid_urls > 1 else "it")
-            + "...\n"
+            + ". Preparing to download...\n"
         )
 
     def format_download_summary(self, video_index: int):
