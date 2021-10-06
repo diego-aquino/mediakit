@@ -100,12 +100,15 @@ mediakit <video_url> [<output_path>]
 After running this command, an interactive CLI will guide you through the download process.
 
 **Examples of use:**
+
 - Download to the current directory
+
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI"
   ```
 
 - Download to **~/Videos**
+
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" ~/Videos
   ```
@@ -128,27 +131,33 @@ You can also download as **audio** (`mp3`) or as **video only** (without audio) 
 > If a resolution is not available for the video, the download will fall back to the closest available resolution lower than the one specified.
 
 **Examples of use:**
+
 - Download with resolution of **1080p**
+
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f 1080p
   ```
 
 - Download with resolution of **4K** (2160p)
+
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f 4K
   ```
 
 - Download **multiple resolutions** at once (each resolution will be downloaded in a different file)
+
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f 1080p 720p
   ```
 
 - Download with the **highest resolution available** (same result as not using the flag `-f`)
+
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f max
   ```
 
 - Download as **audio** (`mp3`)
+
   ```bash
   mediakit "https://www.youtube.com/watch?v=m7AFEULF9LI" -f audio
   ```
@@ -174,14 +183,16 @@ By running this, Mediakit will read all URL's in the provided file and download 
 **Examples of use:**
 
 Using a batch file called `urls.txt` as an example:
-  ```bash
-  # contents of `urls.txt`
-  https://www.youtube.com/watch?v=m7AFEULF9LI
-  https://www.youtube.com/watch?v=tpWLeUt_7Cc
-  https://www.youtube.com/watch?v=Fau8gKw33ME
-  ```
+
+```bash
+# contents of `urls.txt`
+https://www.youtube.com/watch?v=m7AFEULF9LI
+https://www.youtube.com/watch?v=tpWLeUt_7Cc
+https://www.youtube.com/watch?v=Fau8gKw33ME
+```
 
 - Download URL's in `urls.txt` with the highest available resolution
+
   ```bash
   mediakit -b urls.txt
   ```
@@ -197,14 +208,15 @@ Using a batch file called `urls.txt` as an example:
 
 Mediakit currently supports the following command options:
 
-| Option | Description | Example |
-|-:|-|-|
-| `-h`, `--help` | Show help | `mediakit -h` |
-| `-v`, `--version` | Show the currently installed version | `mediakit -v` |
-| `-y`, `--yes` | Answer "yes" to all questions beforehand | `mediakit https://... -y` |
-| `-b <batch_file>`, <br /> `--batch <batch_file>` | Download videos from URL's stored in a batch file | `mediakit -b urls.txt` |
-| `-nc`, `--no-colors` | Disable the colors of the interface | `mediakit https://... -nc` |
-| `-f <formats>`, <br /> `--formats <formats>` | Specify which formats you want to download | `mediakit https://... -f audio` |
+|                                                                                   Option | Description                                       | Example                         |
+| ---------------------------------------------------------------------------------------: | ------------------------------------------------- | ------------------------------- |
+|                                                                           `-h`, `--help` | Show help                                         | `mediakit -h`                   |
+|                                                                        `-v`, `--version` | Show the currently installed version              | `mediakit -v`                   |
+|                                                                            `-y`, `--yes` | Answer "yes" to all questions beforehand          | `mediakit https://... -y`       |
+|                                         `-b <batch_file>`, <br /> `--batch <batch_file>` | Download videos from URL's stored in a batch file | `mediakit -b urls.txt`          |
+|                                                                     `-nc`, `--no-colors` | Disable the colors of the interface               | `mediakit https://... -nc`      |
+|                                             `-f <formats>`, <br /> `--formats <formats>` | Specify which formats you want to download        | `mediakit https://... -f audio` |
+| `-p <maximum downloads in parallel>`, <br /> `--formats <maximum downloads in parallel>` | Set a limit to downloads in parallel              | `mediakit https://... -f audio` |
 
 ---
 
