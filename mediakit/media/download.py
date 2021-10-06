@@ -1,6 +1,9 @@
 from os import path
+import uuid
 
-from mediakit.info import temporary_filename
+from pytube.__main__ import YouTube
+
+from mediakit import info
 from mediakit.media.convert import (
     merge_video_and_audio,
     convert_media,
@@ -30,6 +33,7 @@ class MediaResource:
         self.source = source
         self.output_type = output_type
         self.output_path = output_path
+        self.definition = definition
 
         final_definition = (
             VIDEO_DEFINITIONS_ALIASES.get(definition, definition)
@@ -38,15 +42,30 @@ class MediaResource:
         )
         is_alias_definition = definition != final_definition
 
+        default_extension = "mp4" if self.output_type.startswith("video") else "mp3"
+
         if filename:
-            filename_without_extension, extension = filename.split(".")
-            self.filename = get_safe_filename(
-                f"{filename_without_extension}{filename_suffix}.{extension}"
-            )
+            *initial_filename_components, last_filename_component = filename.split(".")
+
+            extension_was_provided = len(initial_filename_components) > 0
+
+            if extension_was_provided:
+                filename_without_extension = (
+                    ".".join(initial_filename_components) + filename_suffix
+                )
+                extension = last_filename_component
+                self.filename = get_safe_filename(
+                    f"{filename_without_extension}.{extension}"
+                )
+            else:
+                filename_without_extension = last_filename_component + filename_suffix
+                self.filename = get_safe_filename(
+                    f"{filename_without_extension}.{default_extension}"
+                )
         else:
+            filename_without_extension = source.title + filename_suffix
             self.filename = get_safe_filename(
-                f"{source.title}{filename_suffix}"
-                + (".mp4" if self.output_type.startswith("video") else ".mp3")
+                f"{filename_without_extension}.{default_extension}"
             )
 
         if output_type.startswith("video"):
@@ -84,6 +103,14 @@ class MediaResource:
         self.download_status = DownloadStatusCodes.READY
         self.downloading_stream = None
 
+        unique_resource_id = uuid.uuid4()
+        self.temporary_video_filename = (
+            f"{info.temporary_filename}-{unique_resource_id}[video].webm"
+        )
+        self.temporary_audio_filename = (
+            f"{info.temporary_filename}-{unique_resource_id}[audio].webm"
+        )
+
     def download(self):
         self.download_status = DownloadStatusCodes.DOWNLOADING
 
@@ -92,7 +119,7 @@ class MediaResource:
 
             self.video.download(
                 output_path=self.output_path,
-                filename=f"{temporary_filename}[video].webm",
+                filename=self.temporary_video_filename,
                 skip_existing=False,
             )
         if self.output_type == "audio" or (
@@ -102,7 +129,7 @@ class MediaResource:
 
             self.audio.download(
                 output_path=self.output_path,
-                filename=f"{temporary_filename}[audio].webm",
+                filename=self.temporary_audio_filename,
                 skip_existing=False,
             )
 
@@ -123,6 +150,17 @@ class MediaResource:
         if self.output_type == "audio":
             return self.audio_bytes_remaining
 
+    def copy(self, source: YouTube = None):
+        final_source = source if source is not None else self.source
+
+        return MediaResource(
+            final_source,
+            self.output_type,
+            output_path=self.output_path,
+            definition=self.definition,
+            filename=self.filename,
+        )
+
     def _convert_dowloaded_resources(self):
         if self.output_type.startswith("video"):
             if self.output_type == "videoaudio" and self.has_external_audio:
@@ -133,8 +171,8 @@ class MediaResource:
             self._convert_downloaded_audio()
 
     def _merge_video_with_external_audio(self):
-        video_path = path.join(self.output_path, f"{temporary_filename}[video].webm")
-        audio_path = path.join(self.output_path, f"{temporary_filename}[audio].webm")
+        video_path = path.join(self.output_path, self.temporary_video_filename)
+        audio_path = path.join(self.output_path, self.temporary_audio_filename)
         output_file_path = path.join(self.output_path, self.filename)
 
         merge_video_and_audio(video_path, audio_path, output_file_path)
@@ -143,10 +181,8 @@ class MediaResource:
         remove_file(audio_path)
 
     def _convert_downloaded_video(self):
-        downloaded_temp_filename = f"{temporary_filename}[video].webm"
-
         downloaded_temp_file_path = path.join(
-            self.output_path, downloaded_temp_filename
+            self.output_path, self.temporary_video_filename
         )
         output_file_path = path.join(self.output_path, self.filename)
 
@@ -160,7 +196,7 @@ class MediaResource:
         remove_file(downloaded_temp_file_path)
 
     def _convert_downloaded_audio(self):
-        downloaded_temp_filename = f"{temporary_filename}[audio].webm"
+        downloaded_temp_filename = self.temporary_audio_filename
 
         downloaded_temp_file_path = path.join(
             self.output_path, downloaded_temp_filename

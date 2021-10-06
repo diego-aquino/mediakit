@@ -65,7 +65,7 @@ def read_video_urls_from(batch_file_path):
         for line in batch_file:
             clear_line = line.strip()
 
-            if regex.is_video_url_like(clear_line):
+            if regex.is_youtube_video_url(clear_line):
                 video_urls.append(clear_line)
 
     return video_urls

@@ -5,3 +5,5 @@ imageio-ffmpeg
 colorama
 twine
 wheel
+pylint
+black
