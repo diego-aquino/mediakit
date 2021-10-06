@@ -34,7 +34,6 @@ class MediaResource:
         self.output_type = output_type
         self.output_path = output_path
         self.definition = definition
-        self.filename_suffix = filename_suffix
 
         final_definition = (
             VIDEO_DEFINITIONS_ALIASES.get(definition, definition)
@@ -160,7 +159,6 @@ class MediaResource:
             output_path=self.output_path,
             definition=self.definition,
             filename=self.filename,
-            filename_suffix=self.filename_suffix,
         )
 
     def _convert_dowloaded_resources(self):
