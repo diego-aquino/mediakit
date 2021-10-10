@@ -89,7 +89,7 @@ You can download a video with Mediakit by running:
 mediakit <video_url> [<output_path>]
 ```
 
-- **video_url**: the URL of the video to download (e.g. http://www.youtube.com/watch?v=...).
+- **video_url**: the URL of the video to download (e.g. https://www.youtube.com/watch?v=...).
 
   > As URL's may have special characters, it is recommended that you **wrap the URL in double quotes** ("") to ensure that it will be recognized properly.
 
@@ -168,7 +168,23 @@ You can also download as **audio** (`mp3`) or as **video only** (without audio) 
   # download video with 1080p, audio with highest definition available and video-only (without audio) with 720p
   ```
 
-### Downloading multiple videos sequentially
+### Downloading multiple videos
+
+#### Downloading from playlists
+
+By providing a playlist URL, Mediakit will automatically download all videos in it.
+
+```bash
+mediakit <playlist_url> [<output_path>]
+```
+
+- **playlist_url**: the URL of the playlist to download (e.g. https://www.youtube.com/playlist?list=...).
+
+> Make sure the playlist is marked as public, otherwise Mediakit won't be able to access it!
+
+> You can also use other options with this command, such as specify which formats and definitions you want your downloads to be.
+
+#### Using a batch file
 
 With the option `-b` (or its longhand `--batch`), you can download multiple videos sequentially by providing a batch file (a text file containing one or more video URL's, each one in a separate line):
 
@@ -178,7 +194,7 @@ mediakit [-b | --batch] <batch_file>
 
 By running this, Mediakit will read all URL's in the provided file and download them sequentially.
 
-> You can also use other options along with `--batch`, such as specify which formats and definitions you want your downloads to be.
+> You can also use other options along with `--batch`, similarly to [downloading from playlists](#downloading-from-playlists).
 
 **Examples of use:**
 

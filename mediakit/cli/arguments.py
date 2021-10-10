@@ -53,7 +53,7 @@ class Parser(ArgumentParser):
 
     def add_download_arguments(self):
         if not global_config.batch_file:
-            self.add_argument("video_url", help="URL of the YouTube video to download")
+            self.add_argument("url", help="URL of the YouTube video to download")
         self.add_argument(
             "output_path",
             nargs="?",
@@ -91,6 +91,7 @@ class CommandArgs:
     def __init__(self, args=sys.argv, parse_and_update_global_config=True):
         self.arguments = args[1:]
         self.unique_arguments = set(self.arguments)
+        self.parsed_arguments = None
 
         self.parser = Parser(
             formatter_class=RawDescriptionHelpFormatter, add_help=False
@@ -118,10 +119,20 @@ class CommandArgs:
 
         return False
 
+    def has_playlist_url(self):
+        for argument in self.unique_arguments:
+            if regex.is_youtube_playlist_url(argument):
+                return True
+
+        return False
+
     def parse_download_arguments(self):
+        if self.parsed_arguments is not None:
+            return self.parsed_arguments
+
         self.parser.add_download_arguments()
-        arguments = self.parser.parse_args()
-        return arguments
+        self.parsed_arguments = self.parser.parse_args()
+        return self.parsed_arguments
 
 
 def show_current_version():

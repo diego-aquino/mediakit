@@ -409,6 +409,10 @@ class DownloadCLIFormatter:
 
     def format_total_download_size_label(self, video_index: int):
         media_resource = self.store.media_resources_to_download[video_index]
+
+        if media_resource is None:
+            return ""
+
         total_download_size = media_resource.total_size
 
         formatted_download_size = self.format_data_size(total_download_size)
