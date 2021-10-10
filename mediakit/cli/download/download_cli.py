@@ -104,26 +104,36 @@ class DownloadCLI(LoadableCLI):
             skipped_formats = non_flatten_skipped_formats[video_index][0]
             replaced_formats = non_flatten_formats_replaced_by_fallback[video_index][0]
 
-            non_flatten_videos[video_index] = [
-                YouTube(source_video.watch_url) for _ in media_resources_to_download
-            ]
-            non_flatten_media_resources[video_index] = [
-                media_resources_to_download[media_resource_index].copy(
-                    source=non_flatten_videos[video_index][media_resource_index]
-                )
-                for media_resource_index in range(len(media_resources_to_download))
-            ]
-            non_flatten_available_formats[video_index] = [
-                available_formats for _ in media_resources_to_download
-            ]
-            non_flatten_skipped_formats[video_index] = [
-                skipped_formats for _ in media_resources_to_download
-            ]
-            non_flatten_formats_replaced_by_fallback[video_index] = [
-                replaced_formats for _ in media_resources_to_download
-            ]
+            if len(media_resources_to_download) > 0:
+                non_flatten_videos[video_index] = [
+                    YouTube(source_video.watch_url) for _ in media_resources_to_download
+                ]
+                non_flatten_media_resources[video_index] = [
+                    media_resources_to_download[media_resource_index].copy(
+                        source=non_flatten_videos[video_index][media_resource_index]
+                    )
+                    for media_resource_index in range(len(media_resources_to_download))
+                ]
+                non_flatten_available_formats[video_index] = [
+                    available_formats for _ in media_resources_to_download
+                ]
+                non_flatten_skipped_formats[video_index] = [
+                    skipped_formats for _ in media_resources_to_download
+                ]
+                non_flatten_formats_replaced_by_fallback[video_index] = [
+                    replaced_formats for _ in media_resources_to_download
+                ]
+            else:
+                non_flatten_videos[video_index] = [YouTube(source_video.watch_url)]
+                non_flatten_media_resources[video_index] = [None]
+                non_flatten_available_formats[video_index] = [available_formats]
+                non_flatten_skipped_formats[video_index] = [skipped_formats]
+                non_flatten_formats_replaced_by_fallback[video_index] = [
+                    replaced_formats
+                ]
 
         flatten_videos = flatten_list(non_flatten_videos)
+
         self.store.prepare_store(len(flatten_videos))
         self.store.videos = flatten_videos
 
@@ -179,7 +189,12 @@ class DownloadCLI(LoadableCLI):
 
             video_index = video_indexes_left_to_download.pop()
 
-            self._show_download_summary(video_index)
+            try:
+                self._show_download_summary(video_index)
+            except exceptions.NoAvailableSpecifiedFormats as exception:
+                exception.show_message()
+                start_next_download()
+                return
 
             should_ask_confirmation_to_download = (
                 not global_config.answer_yes_to_all_questions
@@ -269,6 +284,9 @@ class DownloadCLI(LoadableCLI):
     ):
         for video_index in range(len(self.store.videos)):
             media_resource = self.store.media_resources_to_download[video_index]
+
+            if media_resource is None:
+                continue
 
             should_clear_detailed_download_info = (
                 media_resource.download_status == DownloadStatusCodes.DONE
@@ -402,6 +420,7 @@ class DownloadCLI(LoadableCLI):
 
     def _load_video_data(self, video: YouTube, formats):
         available_formats = self._get_available_formats(video)
+
         (
             media_resources_to_download,
             skipped_formats,
