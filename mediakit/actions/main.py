@@ -1,4 +1,5 @@
 from mediakit.actions import download
+from mediakit.actions.download_from_playlist import download_from_playlist
 from mediakit.cli.arguments import (
     command_args,
     GlobalArguments,
@@ -17,6 +18,8 @@ def get_command_actions():
         actions.append(show_current_version)
     if command_args.has_video_url() or command_args.has_argument(GlobalArguments.batch):
         actions.append(download)
+    elif command_args.has_playlist_url():
+        actions.append(download_from_playlist)
 
     if len(actions) == 0:
         if len(command_args.arguments) > 0:

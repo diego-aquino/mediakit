@@ -1,4 +1,5 @@
-from mediakit.cli.screen import screen, ContentCategories
+import sys
+from mediakit.cli.screen import Content, ContentCategories
 from mediakit.cli.colors import colored, Colors
 
 
@@ -8,7 +9,7 @@ class MediakitException(Exception):
         self.category = category
 
     def show_message(self):
-        screen.append_content(self.message, self.category)
+        print(Content.format_inner_text(self.message, self.category), file=sys.stderr)
 
 
 class CommandUnavailable(MediakitException):
@@ -33,7 +34,17 @@ class FFMPEGNotAvailable(MediakitException):
 
 class InvalidVideoURLError(MediakitException):
     def __init__(self):
-        message = "Could not recognize the provided URL. Please, try again.\n\n"
+        message = "Could not recognize the provided video URL. Please, try again.\n\n"
+        category = ContentCategories.ERROR
+
+        super().__init__(message, category)
+
+
+class InvalidPlaylistURLError(MediakitException):
+    def __init__(self):
+        message = (
+            "Could not recognize the provided playlist URL. Please, try again.\n\n"
+        )
         category = ContentCategories.ERROR
 
         super().__init__(message, category)
@@ -90,6 +101,17 @@ class NoVideoURLsInBatchFile(MediakitException):
             "\nCould not find any valid video URLs in "
             + colored(batch_file, fore=Colors.fore.MAGENTA)
             + "\nPlease check your entries and try again.\n\n"
+        )
+        category = ContentCategories.ERROR
+
+        super().__init__(message, category)
+
+
+class EmptyPlaylistException(MediakitException):
+    def __init__(self):
+        message = (
+            "\nCould not find any videos in this playlist.\n"
+            + "Make sure it exists and is marked as public.\n\n"
         )
         category = ContentCategories.ERROR
 
