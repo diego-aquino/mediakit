@@ -1,4 +1,4 @@
-pytube>=11.0.1
+pytube>=11.0.2
 clint
 imageio
 imageio-ffmpeg

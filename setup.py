@@ -35,7 +35,7 @@ setup(
     ],
     python_requires=">=3.6",
     install_requires=[
-        "pytube>=11.0.1",
+        "pytube>=11.0.2",
         "clint",
         "imageio",
         "imageio-ffmpeg",
