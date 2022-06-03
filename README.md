@@ -62,6 +62,12 @@
 
 ---
 
+## :warning: Warning
+
+**This project is archived and no longer maintained**. If you'd like alternatives to Mediakit, [youtube-dl](https://github.com/ytdl-org/youtube-dl) and [yt-dlp](https://github.com/yt-dlp/yt-dlp) are great options, including more features and a solid contributing community.
+
+---
+
 **Mediakit** is a command line tool to download videos from YouTube.
 
 <p align="center">
